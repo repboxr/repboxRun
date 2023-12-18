@@ -4,8 +4,8 @@ Title: Run repbox analyses
 Version: 0.1
 Author: Sebastian Kranz (Ulm University)
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
-Description: 
-License: Not yet licensed. Not yet in public domain
+Description: Run repbox analyses 
+License: GPL >= 3.0
 Depends: dplyr, restorepoint,repboxArt, repboxMap, repboxStata, repboxReg, repboxDB, repboxCodeText, repboxHtml
 Encoding: UTF-8
 LazyData: true
