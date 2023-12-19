@@ -27,13 +27,13 @@ unzip.zips = function(dir, remove=TRUE) {
 
 }
 
-make.project.files.info = function(project.dir, for.org = TRUE, for.mod=TRUE) {
+make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
   restore.point("make.project.files.info")
   oldwd = getwd()
   org.fi = mod.fi = NULL
 
   if (for.org) {
-    dir = file.path(project.dir,"org")
+    dir = file.path(project_dir,"org")
 
     setwd(dir)
     files = list.files(dir,recursive = TRUE,include.dirs = FALSE)
