@@ -6,7 +6,7 @@ Author: Sebastian Kranz (Ulm University)
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
 Description: Run repbox analyses 
 License: GPL >= 3.0
-Depends: dplyr, restorepoint,repboxArt, repboxMap, repboxStata, repboxReg, repboxDB, repboxCodeText, repboxHtml
+Depends: dplyr, restorepoint,repboxArt, repboxMap, repboxStata, repboxReg, repboxDB, repboxCodeText, repboxHtml, repboxR
 Encoding: UTF-8
 LazyData: true
 

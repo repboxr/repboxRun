@@ -14,8 +14,10 @@ repbox_steps_from = function(static_code=FALSE, art=static_code, reproduction=ar
   list(static_code = static_code, art=art, reproduction=reproduction, reg=reg, mr_base=mr_base,repbox_regdb = repbox_regdb, map=map, html=html)
 }
 
-
-repbox_run_opts = function(stop.on.error = FALSE, stata_version = 17, slimify = FALSE, slimify_org=slimify, store_data_caches=TRUE, timeout = 60*5, stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),art_opts = repbox_art_opts(), map_opts=repbox_map_opts(), html_opts = repbox_html_opts()) {
+#' Specify options for repbox analysis
+#'
+#' @export
+repbox_run_opts = function(stop.on.error = TRUE, stata_version = 17, slimify = FALSE, slimify_org=slimify, store_data_caches=TRUE, timeout = 60*5, stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),r_opts = repbox_r_opts(), art_opts = repbox_art_opts(), map_opts=repbox_map_opts(), html_opts = repbox_html_opts()) {
   list(
     stop.on.error = stop.on.error,
     stata_version = stata_version,
@@ -24,6 +26,7 @@ repbox_run_opts = function(stop.on.error = FALSE, stata_version = 17, slimify = 
     slimify = slimify,
     slimify_org = slimify,
     stata_opts = stata_opts,
+    r_opts = r_opts,
     art_opts = art_opts,
     map_opts = map_opts,
     html_opts = html_opts
