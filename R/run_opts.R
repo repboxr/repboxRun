@@ -1,16 +1,16 @@
-repbox_run_steps_all = function() {
-  repbox_run_steps_except()
+#' Returns all steps of a repbox analysis
+#'
+#' Can be used as argument steps in repbox_run_project
+repbox_all_steps = function() {
+  repbox_run_steps_from(static_code=TRUE)
 }
-#
-# repbox_run_steps_except = function(reproduction=TRUE, reg=TRUE,mr_base=TRUE, repbox_regdb = TRUE, art=TRUE,code_text=TRUE, map=TRUE, html=TRUE) {
-#   list(reproduction=reproduction, reg=reg,mr_base=mr_base, repbox_regdb = repbox_regdb, art=art,code_text=code_text, map=map, html=html)
-# }
-#
-# repbox_run_steps_just = function(reproduction=FALSE, reg=FALSE, mr_base=FALSE, repbox_regdb = FALSE, art=FALSE,code_text=FALSE, map=FALSE, html=FALSE) {
-#   list(reproduction=reproduction, reg=reg, mr_base=mr_base,repbox_regdb = repbox_regdb, art=art,code_text=code_text, map=map, html=html)
-# }
 
-repbox_run_steps_from = function(static_code=FALSE, art=static_code, reproduction=art, reg=reproduction, mr_base=reg, repbox_regdb = mr_base, map=repbox_regdb, html=map) {
+#' Returns steps of a repbox analysis specified by starting or ending steps
+#'
+#' Can be used as argument steps in repbox_run_project
+#'
+#' The arguments of this function are the diffent possible steps in a repbox analysis
+repbox_steps_from = function(static_code=FALSE, art=static_code, reproduction=art, reg=reproduction, mr_base=reg, repbox_regdb = mr_base, map=repbox_regdb, html=map) {
   list(static_code = static_code, art=art, reproduction=reproduction, reg=reg, mr_base=mr_base,repbox_regdb = repbox_regdb, map=map, html=html)
 }
 

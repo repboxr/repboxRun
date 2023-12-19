@@ -1,3 +1,9 @@
+#' Call this function to initialize a new repbox project
+#' @param project.dir The directory of the new project
+#' @param sup.zip The ZIP file of the supplement
+#' @param pdf.files The PDF file(s) of the article. Currently only a single PDF file works but in the future also support for multiple PDF files, e.g. article plus online appendix, will be added.
+#' @param html.files Alternatively, the HTML file(s) of the article.
+#' @param remove.macosx.dirs If TRUE, the "__MACOSX" directories will be removed from the supplement.
 repbox_init_project = function(project.dir, sup.zip=NULL, pdf.files=NULL, html.files = NULL, remove.macosx.dirs=TRUE, overwrite.org = FALSE) {
   restore.point("repbox_init_project")
 
