@@ -1,10 +1,10 @@
 #' Call this function to initialize a new repbox project
 #' @param project_dir The directory of the new project
-#' @param sup.zip The ZIP file of the supplement
-#' @param pdf.files The PDF file(s) of the article. Currently only a single PDF file works but in the future also support for multiple PDF files, e.g. article plus online appendix, will be added.
-#' @param html.files Alternatively, the HTML file(s) of the article.
-#' @param remove.macosx.dirs If TRUE, the "__MACOSX" directories will be removed from the supplement.
-repbox_init_project = function(project_dir, sup.zip=NULL, pdf.files=NULL, html.files = NULL, remove.macosx.dirs=TRUE, overwrite.org = FALSE) {
+#' @param sup_zip The ZIP file of the supplement
+#' @param pdf_files The PDF file(s) of the article. Currently only a single PDF file works but in the future also support for multiple PDF files, e.g. article plus online appendix, will be added.
+#' @param html_files Alternatively, the HTML file(s) of the article.
+#' @param remove_macosx_dirs If TRUE, the "__MACOSX" directories will be removed from the supplement.
+repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_files = NULL, remove_macosx_dirs=TRUE, overwrite_org = FALSE) {
   restore.point("repbox_init_project")
 
   project = basename(project_dir)
@@ -25,8 +25,8 @@ repbox_init_project = function(project_dir, sup.zip=NULL, pdf.files=NULL, html.f
   setwd(project_dir)
 
   # Copy supplement ZIP content into org.dir
-  if (!is.null(sup.zip) & (overwrite.org | !(dir.exists(org.dir)))) {
-    unzip(sup.zip, exdir=org.dir)
+  if (!is.null(sup_zip) & (overwrite_org | !(dir.exists(org.dir)))) {
+    unzip(sup_zip, exdir=org.dir)
   }
 
   if (!dir.exists(org.dir)) {
@@ -36,31 +36,31 @@ repbox_init_project = function(project_dir, sup.zip=NULL, pdf.files=NULL, html.f
   # AEA supplements often are dupplicated
   # in a separate "__MACOSX" directory
   # We will remove those by default
-  if (remove.macosx.dirs) {
-    remove.macosx.dirs(org.dir)
+  if (remove_macosx_dirs) {
+    remove_macosx_dirs(org.dir)
   }
 
   # We get an error if current working directory does not exist
-  repbox_copy_art_pdf(project_dir, pdf.files)
-  repbox_copy_art_html(project_dir, html.files)
+  repbox_copy_art_pdf(project_dir, pdf_files)
+  repbox_copy_art_html(project_dir, html_files)
 }
 
 
-repbox_copy_art_pdf = function(project_dir, pdf.files = NULL) {
+repbox_copy_art_pdf = function(project_dir, pdf_files = NULL) {
   restore.point("copy.repbox.art")
   pdf.dir = file.path(project_dir, "art", "pdf")
-  if (!is.null(pdf.files)) {
+  if (!is.null(pdf_files)) {
     clear.and.create.dir(pdf.dir)
-    file.copy(pdf.files, pdf.dir,recursive = TRUE)
+    file.copy(pdf_files, pdf.dir,recursive = TRUE)
   }
 }
 
-repbox_copy_art_html = function(project_dir, html.files = NULL) {
+repbox_copy_art_html = function(project_dir, html_files = NULL) {
   restore.point("repbox_copy_art_html")
   html.dir = file.path(project_dir, "art", "html")
-  if (!is.null(html.files)) {
+  if (!is.null(html_files)) {
     clear.and.create.dir(html.dir)
-    file.copy(html.files, html.dir,recursive = TRUE)
+    file.copy(html_files, html.dir,recursive = TRUE)
   }
 }
 

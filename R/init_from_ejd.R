@@ -55,12 +55,12 @@ repbox_init_ejd_project = function(art=NULL,artid=NULL, projects.dir = "~/repbox
     art$authors = paste0(authors$author, collapse=", ")
   }
 
-  art$pdf.file = file.path("~/articles_pdf",art$journ,paste0(art$id,".pdf"))
-  art$has.pdf = file.exists(art$pdf.file)
+  art$pdf_file = file.path("~/articles_pdf",art$journ,paste0(art$id,".pdf"))
+  art$has.pdf = file.exists(art$pdf_file)
 
   project_dir = paste0(projects.dir,"/",art$id)
   cat("\n Init ", project_dir, "\n")
-  repbox_init_project(project_dir = project_dir, sup.zip = art$zip.file,pdf.files = art$pdf.file)
+  repbox_init_project(project_dir = project_dir, sup_zip = art$zip.file,pdf_files = art$pdf_file)
 
   if (!dir.exists(file.path(project_dir,"meta"))) {
     dir.create(file.path(project_dir,"meta"))
@@ -81,8 +81,8 @@ repbox_init_ejd_meta = function(project_dir, art=NULL, ejd.db.dir = "~") {
     art$authors =paste0(authors$author, collape=", ")
   }
 
-  art$pdf.file = file.path("~/articles_pdf",art$journ,paste0(art$id,".pdf"))
-  art$has.pdf = file.exists(art$pdf.file)
+  art$pdf_file = file.path("~/articles_pdf",art$journ,paste0(art$id,".pdf"))
+  art$has.pdf = file.exists(art$pdf_file)
 
   if (!dir.exists(file.path(project_dir,"meta"))) {
     dir.create(file.path(project_dir,"meta"))
@@ -91,7 +91,7 @@ repbox_init_ejd_meta = function(project_dir, art=NULL, ejd.db.dir = "~") {
 
 }
 
-remove.macosx.dirs = function(parent.dir) {
+remove_macosx_dirs = function(parent.dir) {
   #parent.dir =  "~/statabox/supp"
   dirs = list.dirs(parent.dir)
   mac.dirs = dirs[has.substr(dirs, "__MACOSX")]
