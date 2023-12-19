@@ -119,7 +119,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
       dir.create(repbox.stata.dir)
 
       dap_and_cache_remove_from_project(project_dir)
-      res = stata.analyse.sup(project_dir,opts=opts$stata_opts)
+      res = repbox_project_run_stata(project_dir,opts=opts$stata_opts)
     }
     if ("r" %in% lang) {
       parcels = repbox_project_run_r(project_dir, opts=opts$r_opts,parcels = parcels)
@@ -148,7 +148,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
     stata_opts = opts$stata_opts
     stata_opts$extract.reg.info = TRUE
     stata_opts$store.data = store.data
-    res = stata.analyse.sup(project_dir,opts=stata_opts)
+    res = repbox_project_run_stata(project_dir,opts=stata_opts)
     repbox_step_end(project_dir, "reg")
   }
 
