@@ -6,90 +6,90 @@ example = function() {
   repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
-  project.dir = "C:/libraries/repbox/projects_reg/testr"
+  project_dir = "C:/libraries/repbox/projects_reg/testr"
   steps = repbox_run_steps_from(static_code=TRUE, art=FALSE)
-  repbox_run_project(project.dir,lang=NULL, steps=steps)
-  rstudioapi::filesPaneNavigate(project.dir)
+  repbox_run_project(project_dir,lang=NULL, steps=steps)
+  rstudioapi::filesPaneNavigate(project_dir)
 
 
-  project.dir = "/home/rstudio/repbox/projects_reg/testsupp"
+  project_dir = "/home/rstudio/repbox/projects_reg/testsupp"
 
   steps = repbox_run_steps_from(static_code=TRUE, art=FALSE, reproduction = FALSE)
-  repbox_run_project(project.dir, steps=steps)
+  repbox_run_project(project_dir, steps=steps)
 
   library(repboxRun)
-  project.dir = "/home/rstudio/repbox/projects_reg/aejmac_6_3_1"
-  project.dir = "/home/rstudio/repbox/projects_reg/testsupp"
-  project.dir = "/home/rstudio/repbox/projects_reg/aejpol_3_4_8"
-  project.dir = "/home/rstudio/repbox/projects_reg/aejpol_7_2_11"
+  project_dir = "/home/rstudio/repbox/projects_reg/aejmac_6_3_1"
+  project_dir = "/home/rstudio/repbox/projects_reg/testsupp"
+  project_dir = "/home/rstudio/repbox/projects_reg/aejpol_3_4_8"
+  project_dir = "/home/rstudio/repbox/projects_reg/aejpol_7_2_11"
 
   #steps = repbox_run_steps_from(art = TRUE)
   #restorepoint::restore.point.options(display.restore.point = !TRUE)
   steps = repbox_run_steps_from(reproduction =  TRUE,map=TRUE)
   opts = repbox_run_opts(art_opts = repbox_art_opts(overwrite=TRUE), html_opts = repbox_html_opts(add_art_source_tab = TRUE))
-  repbox_run_project(project.dir, steps=steps, opts=opts)
+  repbox_run_project(project_dir, steps=steps, opts=opts)
 
-  rstudioapi::filesPaneNavigate(project.dir)
+  rstudioapi::filesPaneNavigate(project_dir)
 
 }
 
-repbox_run_project = function(project.dir, lang = "stata", steps = repbox_run_steps_all(), opts = repbox_run_opts()) {
+repbox_run_project = function(project_dir, lang = "stata", steps = repbox_run_steps_all(), opts = repbox_run_opts()) {
   restore.point("repbox_run_project")
 
   options(dplyr.summarise.inform = FALSE)
 
-  if (!dir.exists(project.dir)) {
-    cat("\nProject directory", project.dir, "does not exist!\n")
+  if (!dir.exists(project_dir)) {
+    cat("\nProject directory", project_dir, "does not exist!\n")
     return(invisible(FALSE))
   }
 
 
 
-  dap.file = paste0(project.dir,"/metareg/dap/stata/dap.Rds")
+  dap.file = paste0(project_dir,"/metareg/dap/stata/dap.Rds")
 
   show_title = function(str) {
     cat("\n++++++++++++++++++++++++++++++++++++++++++++++++++++\n",str,"\n+++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
   }
 
-  org.dir = file.path(project.dir,"org")
-  sup.dir = file.path(project.dir,"mod")
-  repbox.dir = file.path(project.dir, "repbox")
-  repbox.stata.dir = file.path(project.dir, "repbox/stata")
-  repbox.r.dir = file.path(project.dir, "repbox/r")
+  org.dir = file.path(project_dir,"org")
+  sup.dir = file.path(project_dir,"mod")
+  repbox.dir = file.path(project_dir, "repbox")
+  repbox.stata.dir = file.path(project_dir, "repbox/stata")
+  repbox.r.dir = file.path(project_dir, "repbox/r")
 
   parcels = list(.files = list())
 
   if (steps$static_code) {
     show_title("Static analysis of code and its comments")
-    repbox_step_start(project.dir, "static_code", opts)
+    repbox_step_start(project_dir, "static_code", opts)
 
     if (!dir.exists(repbox.dir)) dir.create(repbox.dir)
 
     # Create file info from /org folder
-    parcels$.files$org = make.project.files.info(project.dir,for.org=TRUE, for.mod = FALSE)$org
+    parcels$.files$org = make.project.files.info(project_dir,for.org=TRUE, for.mod = FALSE)$org
     # Save script content in Rds files in parcels
-    parcels = repbox_make_script_parcel(project.dir, parcels)
+    parcels = repbox_make_script_parcel(project_dir, parcels)
     if ("stata" %in% lang) {
       cat("\n  Stata static code analysis...\n\n")
-      parcels = repbox_stata_static_parcel(project.dir, parcels=parcels)
-      parcels = repboxCodeText::code_project_find_refs(project.dir, parcels=parcels)
+      parcels = repbox_stata_static_parcel(project_dir, parcels=parcels)
+      parcels = repboxCodeText::code_project_find_refs(project_dir, parcels=parcels)
     }
 
-    repbox_step_end(project.dir, "static_code")
+    repbox_step_end(project_dir, "static_code")
   }
 
 
   if (steps$art) {
     show_title("Extract information from article text")
-    repbox_step_start(project.dir, "art", opts)
-    art_update_project(project.dir, opts=opts$art_opts)
-    repbox_step_end(project.dir, "art")
+    repbox_step_start(project_dir, "art", opts)
+    art_update_project(project_dir, opts=opts$art_opts)
+    repbox_step_end(project_dir, "art")
   }
 
   # If we run the reproduction step again, we will clear most results
   if (steps$reproduction) {
     show_title("Reproduction of initial supplement")
-    repbox_step_start(project.dir, "reproduction", opts)
+    repbox_step_start(project_dir, "reproduction", opts)
 
     if (dir.exists(sup.dir)) remove.dir(sup.dir)
     # Keep file dates so that we can better
@@ -98,11 +98,11 @@ repbox_run_project = function(project.dir, lang = "stata", steps = repbox_run_st
     copy.dir(org.dir, sup.dir,copy.date=TRUE)
     unzip.zips(sup.dir)
 
-    make.project.files.info(project.dir, for.mod = TRUE, for.org=TRUE)
+    make.project.files.info(project_dir, for.mod = TRUE, for.org=TRUE)
 
     # Remove all files except for code files in org folder
     if (opts$slimify_org) {
-      slimify.org.dir(project.dir)
+      slimify.org.dir(project_dir)
     }
 
 
@@ -110,23 +110,23 @@ repbox_run_project = function(project.dir, lang = "stata", steps = repbox_run_st
       remove.dir(repbox.stata.dir)
       dir.create(repbox.stata.dir)
 
-      dap_and_cache_remove_from_project(project.dir)
-      res = stata.analyse.sup(project.dir,opts=opts$stata_opts)
+      dap_and_cache_remove_from_project(project_dir)
+      res = stata.analyse.sup(project_dir,opts=opts$stata_opts)
     }
     if ("r" %in% lang) {
       stop("R reproduction not yet implemented.")
     }
-    make.project.files.info(project.dir, for.mod = TRUE, for.org=FALSE)
-    repbox_step_end(project.dir, "reproduction")
+    make.project.files.info(project_dir, for.mod = TRUE, for.org=FALSE)
+    repbox_step_end(project_dir, "reproduction")
   }
 
   if (steps$reg & "stata" %in% lang) {
     show_title("Rerun Stata scripts to extract regression information")
-    repbox_step_start(project.dir, "reg", opts)
-    dap = get.project.dap(project.dir, make.if.missing = TRUE)
+    repbox_step_start(project_dir, "reg", opts)
+    dap = get.project.dap(project_dir, make.if.missing = TRUE)
 
     if (opts$store_data_caches) {
-      cache.dir = file.path(project.dir, "metareg/dap/stata/cache")
+      cache.dir = file.path(project_dir, "metareg/dap/stata/cache")
       if (!dir.exists(cache.dir)) dir.create(cache.dir,recursive = TRUE)
       store.data = dap.to.store.data(dap, cache.dir)
     } else {
@@ -140,52 +140,52 @@ repbox_run_project = function(project.dir, lang = "stata", steps = repbox_run_st
     stata_opts = opts$stata_opts
     stata_opts$extract.reg.info = TRUE
     stata_opts$store.data = store.data
-    res = stata.analyse.sup(project.dir,opts=stata_opts)
-    repbox_step_end(project.dir, "reg")
+    res = stata.analyse.sup(project_dir,opts=stata_opts)
+    repbox_step_end(project_dir, "reg")
   }
 
   if (steps$mr_base & "stata" %in% lang) {
     show_title("Base Metareg")
-    repbox_step_start(project.dir, "mr_base", opts)
-    res = mr_base_run_study(project.dir, stop.on.error = opts$stop.on.error,create.regdb = TRUE,stata_version = opts$stata_version)
-    repbox_step_end(project.dir, "mr_base")
+    repbox_step_start(project_dir, "mr_base", opts)
+    res = mr_base_run_study(project_dir, stop.on.error = opts$stop.on.error,create.regdb = TRUE,stata_version = opts$stata_version)
+    repbox_step_end(project_dir, "mr_base")
   }
 
   parcels = NULL
   if (steps$repbox_regdb) {
     show_title("Store repbox regdb")
-    repbox_step_start(project.dir, "repbox_regdb", opts)
-    parcels = repbox_to_regdb(project.dir)
-    repbox_step_end(project.dir, "repbox_regdb")
+    repbox_step_start(project_dir, "repbox_regdb", opts)
+    parcels = repbox_to_regdb(project_dir)
+    repbox_step_end(project_dir, "repbox_regdb")
   }
 
 
 
   if (steps$map) {
     show_title("Create Mappings")
-    repbox_step_start(project.dir, "map", opts)
-    parcels = repboxMap::map_repbox_project(project.dir,parcels = parcels, opts = opts$map_opts)
-    repbox_step_end(project.dir, "map")
+    repbox_step_start(project_dir, "map", opts)
+    parcels = repboxMap::map_repbox_project(project_dir,parcels = parcels, opts = opts$map_opts)
+    repbox_step_end(project_dir, "map")
   }
 
   if (steps$html) {
     show_title("Create HTML Reports")
-    repbox_step_start(project.dir, "html", opts)
-    repboxHtml::repbox_project_html(project.dir,parcels = parcels, opts = opts$html_opts)
-    repbox_step_end(project.dir, "html")
+    repbox_step_start(project_dir, "html", opts)
+    repboxHtml::repbox_project_html(project_dir,parcels = parcels, opts = opts$html_opts)
+    repbox_step_end(project_dir, "html")
   }
   return(TRUE)
 }
 
-repbox_step_start = function(project.dir, step, opts) {
-  step.info.dir = file.path(project.dir,"steps")
+repbox_step_start = function(project_dir, step, opts) {
+  step.info.dir = file.path(project_dir,"steps")
   if (!dir.exists(step.info.dir)) dir.create(step.info.dir, recursive = TRUE)
   file = paste0(step.info.dir, "/",step,".start.Rds")
   saveRDS(list(start_time=Sys.time(), opts=opts), file)
 }
 
-repbox_step_end = function(project.dir, step) {
-  step.info.dir = file.path(project.dir,"steps")
+repbox_step_end = function(project_dir, step) {
+  step.info.dir = file.path(project_dir,"steps")
   file = paste0(step.info.dir, "/",step,".end.Rds")
   saveRDS(list(end_time = Sys.time()), file)
 }

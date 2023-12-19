@@ -11,20 +11,20 @@ example = function() {
   project.dirs = project.dirs[keep]
 
 
-  slim.df = bind_rows(lapply(project.dirs,function(project.dir) {
+  slim.df = bind_rows(lapply(project.dirs,function(project_dir) {
     res = NULL
-    try(res <- slimify.solved.project(project.dir, force=FALSE))
+    try(res <- slimify.solved.project(project_dir, force=FALSE))
     res
   }))
   saveRDS(slim.df, "~/repbox/slimify_results.Rds")
 
-  project.dir = "~/repbox/projects_ejd/ecta_85_3_4"
-  rstudioapi::filesPaneNavigate(paste0(project.dir,"/repbox"))
-  res = slimify.solved.project(project.dir, force=TRUE)
+  project_dir = "~/repbox/projects_ejd/ecta_85_3_4"
+  rstudioapi::filesPaneNavigate(paste0(project_dir,"/repbox"))
+  res = slimify.solved.project(project_dir, force=TRUE)
 }
 
-check.size = function(project.dir) {
-  all.files = list.files(project.dir,recursive=TRUE, full.names=TRUE)
+check.size = function(project_dir) {
+  all.files = list.files(project_dir,recursive=TRUE, full.names=TRUE)
   fi = file.info(all.files)
   fi$mb = fi$size / 1e6
   fi$file = all.files
@@ -34,9 +34,9 @@ check.size = function(project.dir) {
 }
 
 
-slimify.solved.project = function(project.dir, max.org.mb = 10, max.log.mb = 1, max.stata.res.mb = 40, max.matching.mb = 10, max.cmd.mb = 0, force=FALSE, keep.org.code = FALSE) {
+slimify.solved.project = function(project_dir, max.org.mb = 10, max.log.mb = 1, max.stata.res.mb = 40, max.matching.mb = 10, max.cmd.mb = 0, force=FALSE, keep.org.code = FALSE) {
   restore.point("slimify.solved.project")
-  slim.file = file.path(project.dir,"repbox/slimify.Rds")
+  slim.file = file.path(project_dir,"repbox/slimify.Rds")
   if (file.exists(slim.file)) {
     slimify = readRDS(slim.file)
     if (!force) return(slimify)
@@ -44,23 +44,23 @@ slimify.solved.project = function(project.dir, max.org.mb = 10, max.log.mb = 1, 
   } else {
     had.old = FALSE
   }
-  cat("\nslimify ", project.dir)
+  cat("\nslimify ", project_dir)
 
-  all.files = list.files(project.dir,recursive=TRUE, full.names=TRUE)
+  all.files = list.files(project_dir,recursive=TRUE, full.names=TRUE)
   all.files = enc2utf8(all.files)
   fi = file.info(all.files)
   fi$mb = fi$size / 1e6
   fi$file = all.files
   fi$ext = tools::file_ext(fi$file)
 
-  project.dir = normalizePath(project.dir, mustWork=FALSE)
-  org.fi = filter(fi, startsWith(file, file.path(project.dir,"org")))
-  mod.fi = filter(fi, startsWith(file, file.path(project.dir,"mod")))
-  repbox.fi = filter(fi, startsWith(file, file.path(project.dir,"repbox")))
-  log.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/stata/logs")))
-  stata.res.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/stata/repbox_results.Rds")))
-  matching.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/matched_tabs.Rds")))
-  cmd.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/stata/cmd")))
+  project_dir = normalizePath(project_dir, mustWork=FALSE)
+  org.fi = filter(fi, startsWith(file, file.path(project_dir,"org")))
+  mod.fi = filter(fi, startsWith(file, file.path(project_dir,"mod")))
+  repbox.fi = filter(fi, startsWith(file, file.path(project_dir,"repbox")))
+  log.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/stata/logs")))
+  stata.res.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/stata/repbox_results.Rds")))
+  matching.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/matched_tabs.Rds")))
+  cmd.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/stata/cmd")))
 
 
   pre.mb = sum(fi$mb, na.rm=TRUE)
@@ -73,7 +73,7 @@ slimify.solved.project = function(project.dir, max.org.mb = 10, max.log.mb = 1, 
   cmd.mb = sum(cmd.fi$mb, na.rm=TRUE)
 
   # Remove mod folder including do files
-  remove.dir(file.path(project.dir, "mod"))
+  remove.dir(file.path(project_dir, "mod"))
   #non.do.files = filter(mod.fi,ext!="do")$file
   #file.remove(non.do.files)
 
@@ -81,7 +81,7 @@ slimify.solved.project = function(project.dir, max.org.mb = 10, max.log.mb = 1, 
   slimify.org = org.mb > max.org.mb
   if (slimify.org) {
     if (!keep.org.code) {
-      remove.dir(file.path(project.dir, "org"))
+      remove.dir(file.path(project_dir, "org"))
     } else {
       non.code.files = filter(org.fi,! tolower(ext) %in% c("do","r","py","m","rmd","ado","jl"))$file
       file.remove(non.code.files)
@@ -109,13 +109,13 @@ slimify.solved.project = function(project.dir, max.org.mb = 10, max.log.mb = 1, 
   }
 
 
-  post.files = list.files(project.dir,recursive=TRUE, full.names=TRUE)
+  post.files = list.files(project_dir,recursive=TRUE, full.names=TRUE)
   post.files = enc2utf8(post.files)
   post.fi = filter(fi, file %in% post.files)
   post.mb = sum(post.fi$mb, na.rm=TRUE)
 
   if (!had.old) {
-    slimify = tibble(project=basename(project.dir),pre.mb,post.mb,slimify.org, slimify.log, slimify.stata.res, slimify.matching, slimify.cmd,  mod.mb, org.mb, repbox.mb, log.mb, stata.res.mb,matching.mb, cmd.mb, max.org.mb, max.log.mb, max.stata.res.mb, max.matching.mb, max.cmd.mb, kept.org.code = keep.org.code | !slimify.org, project.dir=project.dir,timestamp = Sys.time())
+    slimify = tibble(project=basename(project_dir),pre.mb,post.mb,slimify.org, slimify.log, slimify.stata.res, slimify.matching, slimify.cmd,  mod.mb, org.mb, repbox.mb, log.mb, stata.res.mb,matching.mb, cmd.mb, max.org.mb, max.log.mb, max.stata.res.mb, max.matching.mb, max.cmd.mb, kept.org.code = keep.org.code | !slimify.org, project_dir=project_dir,timestamp = Sys.time())
   } else {
     slimify$post.mb = post.mb
     slimify$slimify.log = slimify.log | slimify$slimify.log
@@ -134,17 +134,17 @@ slimify.solved.project = function(project.dir, max.org.mb = 10, max.log.mb = 1, 
 
   cat(paste0(" from ", round(pre.mb,3), " MB to ", round(post.mb,3)," MB.\n"))
 
-  saveRDS(slimify, file.path(project.dir,"repbox","slimify.Rds"))
+  saveRDS(slimify, file.path(project_dir,"repbox","slimify.Rds"))
   return(slimify)
 }
 
 
 
-slimify.org.dir = function(project.dir,  keep.org.code = TRUE) {
+slimify.org.dir = function(project_dir,  keep.org.code = TRUE) {
   restore.point("slimify.org.dir")
-  cat("\nSlimify", file.path(project.dir,"org"))
+  cat("\nSlimify", file.path(project_dir,"org"))
 
-  all.files = list.files(file.path(project.dir,"org"),recursive=TRUE, full.names=TRUE)
+  all.files = list.files(file.path(project_dir,"org"),recursive=TRUE, full.names=TRUE)
   all.files = enc2utf8(all.files)
   fi = file.info(all.files)
   fi$mb = fi$size / 1e6
@@ -156,13 +156,13 @@ slimify.org.dir = function(project.dir,  keep.org.code = TRUE) {
 
   # Remove org folder
   if (!keep.org.code) {
-    remove.dir(file.path(project.dir, "org"))
+    remove.dir(file.path(project_dir, "org"))
   } else {
     non.code.files = filter(org.fi,! tolower(ext) %in% c("do","r","py","m","rmd","ado","jl"))$file
     file.remove(non.code.files)
   }
 
-  post.files = list.files(file.path(project.dir,"org"),recursive=TRUE, full.names=TRUE)
+  post.files = list.files(file.path(project_dir,"org"),recursive=TRUE, full.names=TRUE)
   post.files = enc2utf8(post.files)
   post.fi = filter(fi, file %in% post.files)
   post.mb = sum(post.fi$mb, na.rm=TRUE)
@@ -177,23 +177,23 @@ example.size.info = function() {
 }
 
 
-project.size.info = function(project.dir) {
+project.size.info = function(project_dir) {
   restore.point("project.size.info")
-  all.files = list.files(project.dir,recursive=TRUE, full.names=TRUE)
+  all.files = list.files(project_dir,recursive=TRUE, full.names=TRUE)
   all.files = enc2utf8(all.files)
   fi = file.info(all.files)
   fi$mb = fi$size / 1e6
   fi$file = all.files
   fi$ext = tools::file_ext(fi$file)
 
-  project.dir = normalizePath(project.dir, mustWork=FALSE)
-  org.fi = filter(fi, startsWith(file, file.path(project.dir,"org")))
-  mod.fi = filter(fi, startsWith(file, file.path(project.dir,"mod")))
-  repbox.fi = filter(fi, startsWith(file, file.path(project.dir,"repbox")))
-  log.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/stata/logs")))
-  stata.res.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/stata/repbox_results.Rds")))
-  matching.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/matched_tabs.Rds")))
-  cmd.fi = filter(repbox.fi, startsWith(file, file.path(project.dir,"repbox/stata/cmd")))
+  project_dir = normalizePath(project_dir, mustWork=FALSE)
+  org.fi = filter(fi, startsWith(file, file.path(project_dir,"org")))
+  mod.fi = filter(fi, startsWith(file, file.path(project_dir,"mod")))
+  repbox.fi = filter(fi, startsWith(file, file.path(project_dir,"repbox")))
+  log.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/stata/logs")))
+  stata.res.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/stata/repbox_results.Rds")))
+  matching.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/matched_tabs.Rds")))
+  cmd.fi = filter(repbox.fi, startsWith(file, file.path(project_dir,"repbox/stata/cmd")))
 
 
   total.mb = sum(fi$mb, na.rm=TRUE)
@@ -205,7 +205,7 @@ project.size.info = function(project.dir) {
   matching.mb = sum(matching.fi$mb, na.rm=TRUE)
   cmd.mb = sum(cmd.fi$mb, na.rm=TRUE)
 
-  cat("\n", project.dir, " log.mb ", round(log.mb,2), " total.mb ", round(total.mb,2))
-  info = tibble(project=basename(project.dir),total.mb,log.mb, cmd.mb,  mod.mb, org.mb, repbox.mb, stata.res.mb,matching.mb, project.dir=project.dir,timestamp = Sys.time())
+  cat("\n", project_dir, " log.mb ", round(log.mb,2), " total.mb ", round(total.mb,2))
+  info = tibble(project=basename(project_dir),total.mb,log.mb, cmd.mb,  mod.mb, org.mb, repbox.mb, stata.res.mb,matching.mb, project_dir=project_dir,timestamp = Sys.time())
   return(info)
 }

@@ -58,20 +58,20 @@ repbox_init_ejd_project = function(art=NULL,artid=NULL, projects.dir = "~/repbox
   art$pdf.file = file.path("~/articles_pdf",art$journ,paste0(art$id,".pdf"))
   art$has.pdf = file.exists(art$pdf.file)
 
-  project.dir = paste0(projects.dir,"/",art$id)
-  cat("\n Init ", project.dir, "\n")
-  repbox_init_project(project.dir = project.dir, sup.zip = art$zip.file,pdf.files = art$pdf.file)
+  project_dir = paste0(projects.dir,"/",art$id)
+  cat("\n Init ", project_dir, "\n")
+  repbox_init_project(project_dir = project_dir, sup.zip = art$zip.file,pdf.files = art$pdf.file)
 
-  if (!dir.exists(file.path(project.dir,"meta"))) {
-    dir.create(file.path(project.dir,"meta"))
+  if (!dir.exists(file.path(project_dir,"meta"))) {
+    dir.create(file.path(project_dir,"meta"))
   }
-  saveRDS(as_tibble(art), file.path(project.dir, "meta","ejd_art.Rds"))
+  saveRDS(as_tibble(art), file.path(project_dir, "meta","ejd_art.Rds"))
 }
 
-repbox_init_ejd_meta = function(project.dir, art=NULL, ejd.db.dir = "~") {
+repbox_init_ejd_meta = function(project_dir, art=NULL, ejd.db.dir = "~") {
   if (is.null(art)) {
     db = get.articles.db(ejd.db.dir)
-    artid = basename(project.dir)
+    artid = basename(project_dir)
     art = dbGet(db, "article",list(id=artid))
   }
 
@@ -84,10 +84,10 @@ repbox_init_ejd_meta = function(project.dir, art=NULL, ejd.db.dir = "~") {
   art$pdf.file = file.path("~/articles_pdf",art$journ,paste0(art$id,".pdf"))
   art$has.pdf = file.exists(art$pdf.file)
 
-  if (!dir.exists(file.path(project.dir,"meta"))) {
-    dir.create(file.path(project.dir,"meta"))
+  if (!dir.exists(file.path(project_dir,"meta"))) {
+    dir.create(file.path(project_dir,"meta"))
   }
-  saveRDS(as_tibble(art), file.path(project.dir, "meta","ejd_art.Rds"))
+  saveRDS(as_tibble(art), file.path(project_dir, "meta","ejd_art.Rds"))
 
 }
 

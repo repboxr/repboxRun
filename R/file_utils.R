@@ -44,11 +44,11 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
     fi$ext = tools::file_ext(files)
     fi
     org.fi = fi
-    saveRDS(fi,file.path(project.dir,"repbox/org_files.Rds"))
+    saveRDS(fi,file.path(project_dir,"repbox/org_files.Rds"))
   }
 
   if (for.mod) {
-    dir = file.path(project.dir,"mod")
+    dir = file.path(project_dir,"mod")
     setwd(dir)
     files = list.files(dir,recursive = TRUE,include.dirs = FALSE)
     fi = as.data.frame(file.info(files))
@@ -57,7 +57,7 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
     fi$base = basename(files)
     fi$ext = tools::file_ext(files)
     mod.fi = fi
-    saveRDS(fi,file.path(project.dir,"repbox/mod_files.Rds"))
+    saveRDS(fi,file.path(project_dir,"repbox/mod_files.Rds"))
   }
 
   if (!is.null(oldwd)) setwd(oldwd)
@@ -65,7 +65,7 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
 }
 
 
-repbox_make_script_parcel = function(project.dir, parcels) {
+repbox_make_script_parcel = function(project_dir, parcels) {
   restore.point("repbox_parcel_script")
   org.fi = parcels$.files$org
 
@@ -74,10 +74,10 @@ repbox_make_script_parcel = function(project.dir, parcels) {
     filter(file_type %in% c("do","r")) %>%
     arrange(file_type, file) %>%
     mutate(
-      artid=basename(project.dir),
+      artid=basename(project_dir),
       file_path=file,
       file_name = basename(file),
-      sup_dir = paste0(project.dir, "/org"),
+      sup_dir = paste0(project_dir, "/org"),
       long_path = paste0(sup_dir,"/", file),
       script_num = seq_len(n()),
       file_exists = file.exists(long_path),
@@ -109,7 +109,7 @@ repbox_make_script_parcel = function(project.dir, parcels) {
     r_file = list(script_file = r_df),
     r_source = list(script_source = r_df)
   )
-  regdb_save_parcels(parcels, dir = file.path(project.dir, "repbox", "regdb") )
+  regdb_save_parcels(parcels, dir = file.path(project_dir, "repbox", "regdb") )
   return(parcels)
 }
 
