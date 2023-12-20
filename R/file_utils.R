@@ -109,7 +109,7 @@ repbox_make_script_parcel = function(project_dir, parcels) {
     r_file = list(script_file = r_df),
     r_source = list(script_source = r_df)
   )
-  regdb_save_parcels(parcels, dir = file.path(project_dir, "repbox", "regdb") )
+  repdb_save_parcels(parcels, dir = file.path(project_dir, "repbox", "repdb") )
   return(parcels)
 }
 

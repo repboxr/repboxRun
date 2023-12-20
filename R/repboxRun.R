@@ -155,16 +155,16 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
   if (steps$mr_base & "stata" %in% lang) {
     show_title("Base Metareg")
     repbox_log_step_start(project_dir, "mr_base", opts)
-    res = mr_base_run_study(project_dir, stop.on.error = opts$stop.on.error,create.regdb = TRUE,stata_version = opts$stata_version)
+    res = mr_base_run_study(project_dir, stop.on.error = opts$stop.on.error,create.repdb = TRUE,stata_version = opts$stata_version)
     repbox_log_step_end(project_dir, "mr_base")
   }
 
   parcels = NULL
-  if (steps$repbox_regdb) {
-    show_title("Store repbox regdb")
-    repbox_log_step_start(project_dir, "repbox_regdb", opts)
-    parcels = repbox_to_regdb(project_dir)
-    repbox_log_step_end(project_dir, "repbox_regdb")
+  if (steps$repbox_repdb) {
+    show_title("Store repbox repdb")
+    repbox_log_step_start(project_dir, "repbox_repdb", opts)
+    parcels = repbox_to_repdb(project_dir)
+    repbox_log_step_end(project_dir, "repbox_repdb")
   }
 
 

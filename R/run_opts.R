@@ -10,8 +10,8 @@ repbox_steps_all = function() {
 #' Can be used as argument steps in repbox_run_project
 #'
 #' The arguments of this function are the diffent possible steps in a repbox analysis
-repbox_steps_from = function(static_code=FALSE, art=static_code, reproduction=art, reg=reproduction, mr_base=reg, repbox_regdb = mr_base, map=repbox_regdb, html=map) {
-  list(static_code = static_code, art=art, reproduction=reproduction, reg=reg, mr_base=mr_base,repbox_regdb = repbox_regdb, map=map, html=html)
+repbox_steps_from = function(static_code=FALSE, art=static_code, reproduction=art, reg=reproduction, mr_base=reg, repbox_repdb = mr_base, map=repbox_repdb, html=map) {
+  list(static_code = static_code, art=art, reproduction=reproduction, reg=reg, mr_base=mr_base,repbox_repdb = repbox_repdb, map=map, html=html)
 }
 
 #' Specify options for repbox analysis
