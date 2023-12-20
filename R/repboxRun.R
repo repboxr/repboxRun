@@ -123,6 +123,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
     }
     if ("r" %in% lang) {
       parcels = repbox_project_run_r(project_dir, opts=opts$r_opts,parcels = parcels)
+      parcels = repbox_project_extract_r_results(project_dir, parcels, opts=opts$r_opts)
     }
     make.project.files.info(project_dir, for.mod = TRUE, for.org=FALSE)
     repbox_log_step_end(project_dir, "reproduction")
