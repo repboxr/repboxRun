@@ -63,6 +63,10 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
 
   parcels = list(.files = list())
 
+  if (steps$file_info) {
+    parcels$.files$org = make.project.files.info(project_dir,for.org=TRUE, for.mod = FALSE)$org
+  }
+
   if (steps$static_code) {
     show_title("Static analysis of code and its comments")
     repbox_log_step_start(project_dir, "static_code", opts)

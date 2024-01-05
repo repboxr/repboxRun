@@ -31,7 +31,7 @@ repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_f
 
   # Copy supplement ZIP content into org.dir
   if (!is.null(sup_zip) & (overwrite_org | !(dir.exists(org.dir)))) {
-    unzip(sup_zip, exdir=org.dir)
+    unzip(sup_zip, exdir=org.dir,setTimes = TRUE)
   }
 
   if (!dir.exists(org.dir)) {
@@ -68,4 +68,14 @@ repbox_copy_art_html = function(project_dir, html_files = NULL) {
     file.copy(html_files, html.dir,recursive = TRUE)
   }
 }
+
+
+remove_macosx_dirs = function(parent.dir) {
+  dirs = list.dirs(parent.dir)
+  mac.dirs = dirs[has.substr(dirs, "__MACOSX")]
+  for (mac.dir in mac.dirs) {
+    remove.dir(mac.dir,recursive = TRUE)
+  }
+}
+
 

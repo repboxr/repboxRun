@@ -90,12 +90,3 @@ repbox_init_ejd_meta = function(project_dir, art=NULL, ejd.db.dir = "~") {
   saveRDS(as_tibble(art), file.path(project_dir, "meta","ejd_art.Rds"))
 
 }
-
-remove_macosx_dirs = function(parent.dir) {
-  #parent.dir =  "~/statabox/supp"
-  dirs = list.dirs(parent.dir)
-  mac.dirs = dirs[has.substr(dirs, "__MACOSX")]
-  for (mac.dir in mac.dirs) {
-    remove.dir(mac.dir,recursive = TRUE)
-  }
-}
