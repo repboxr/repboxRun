@@ -6,6 +6,8 @@ remove.dir = function(dir.to.be.removed, recursive=TRUE, must.contain = "/projec
   unlink(dir.to.be.removed,recursive = recursive)
 }
 
+
+
 unzip.zips = function(dir, remove=TRUE) {
   zip.files = list.files(dir, glob2rx("*.zip"), ignore.case=TRUE,full.names=TRUE,recursive = TRUE)
   for (zip.file in zip.files) {
@@ -27,10 +29,48 @@ unzip.zips = function(dir, remove=TRUE) {
 
 }
 
+repbox_get_org_sup_files = function(project_dir) {
+  restore.point("repbox_get_org_sup_files")
+
+  file = file.path(project_dir, "meta","sup_files.Rds")
+  if (file.exists(file)) {
+    files_df = readRDS(file)
+    return(files_df)
+  }
+
+  if (repbox_has_just_extracted_code(project_dir)) {
+    stop("The project has just extracted code files, but no general file ifo meta/sup_files.Rds exists, which should have created when project was initialized.")
+  }
+
+  file = file.path(project_dir, "repbox","org_files.Rds")
+  if (file.exists(file)) {
+    files_df = readRDS(file)
+  } else {
+    files_df = make.project.files.info(project_dir,for.mod=FALSE)$org
+  }
+  names(file_df) = c("file_path","mb","timestamp")
+  file_df$mb = file_df$mb / 1e6
+  file_df$file_type = tolower(tools::file_ext(file_df$file_path))
+
+  file_df = file_df %>%
+    transmute(
+      file_path = file,
+      file_type = tolower(ext),
+      timestamp = mtime,
+      mb = size / 1e6
+    )
+
+  return(file_df)
+}
+
 make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
   restore.point("make.project.files.info")
   oldwd = getwd()
   org.fi = mod.fi = NULL
+
+  if (!dir.exists(file.path(project_dir,"repbox"))) {
+    dir.create(file.path(project_dir,"repbox"))
+  }
 
   if (for.org) {
     dir = file.path(project_dir,"org")

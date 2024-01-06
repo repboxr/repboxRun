@@ -66,7 +66,10 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
   parcels = list(.files = list())
 
   if (steps$file_info) {
+    show_title("Extract supplement's basic file information")
+    repbox_log_step_start(project_dir, "file_info", opts=NULL)
     parcels = sup_save_basic_info(project_dir, parcels)
+    repbox_log_step_end(project_dir, "file_info")
   }
 
   if (steps$static_code) {

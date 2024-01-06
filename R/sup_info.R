@@ -4,16 +4,10 @@ sup_save_basic_info = function(project_dir, parcels=list()) {
   artid = basename(project_dir)
 
   # 1. Store info about all files
-  parcels$.files$org = make.project.files.info(project_dir,for.org=TRUE, for.mod = FALSE)$org
+  file_df = repbox_get_org_sup_files(project_dir)
 
-  file_info = parcels$.files$org %>%
-    transmute(
-      artid = artid,
-      file_path=file,
-      file_type = tolower(ext),
-      mb = size/1e6,
-      timestamp = mtime
-    )
+  file_info = file_df %>%
+    mutate(artid = artid)
 
   # 2. Specific info for common file types
   file_type_info = file_info %>%

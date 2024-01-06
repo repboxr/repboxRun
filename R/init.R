@@ -8,8 +8,9 @@
 #' @param pdf_files The PDF file(s) of the article. Currently only a single PDF file works but in the future also support for multiple PDF files, e.g. article plus online appendix, will be added.
 #' @param html_files Alternatively, the HTML file(s) of the article.
 #' @param remove_macosx_dirs If TRUE, the "__MACOSX" directories will be removed from the supplement.
+#' @param just_extract_code If TRUE just the R and Stata code files of the supplement will be extracted. This can (only) make sense if you just want to perform static analysis of code (and the article). Then you can save space. Complete repbox analysis won't be feasible however.
 #' @export
-repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_files = NULL, remove_macosx_dirs=TRUE, overwrite_org = FALSE) {
+repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_files = NULL, remove_macosx_dirs=TRUE, overwrite_org = FALSE, just_extract_code = FALSE) {
   restore.point("repbox_init_project")
 
   project = basename(project_dir)
@@ -31,7 +32,7 @@ repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_f
 
   # Copy supplement ZIP content into org.dir
   if (!is.null(sup_zip) & (overwrite_org | !(dir.exists(org.dir)))) {
-    unzip(sup_zip, exdir=org.dir,setTimes = TRUE)
+    repbox_sup_extract_zip(project_dir, sup_zip, just_extract_code, remove_macosx_dirs=remove_macosx_dirs)
   }
 
   if (!dir.exists(org.dir)) {
@@ -48,6 +49,57 @@ repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_f
   # We get an error if current working directory does not exist
   repbox_copy_art_pdf(project_dir, pdf_files)
   repbox_copy_art_html(project_dir, html_files)
+}
+
+repbox_has_just_extracted_code = function(project_dir) {
+  just_extract_code_file = file.path(project_dir, "steps", "NOTE_JUST_EXRACTED_CODE")
+  file.exists(just_extract_code_file)
+}
+
+repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remove_macosx_dirs=TRUE) {
+  restore.point("repbox_sup_just_extract_code")
+
+  org.dir = file.path(project_dir,"org")
+  repbox.dir = file.path(project_dir, "repbox")
+  steps.dir = file.path(project_dir, "steps")
+  just_extract_code_file = file.path(steps.dir, "NOTE_JUST_EXRACTED_CODE")
+  if (!just_extract_code) {
+    unzip(sup_zip, exdir = org.dir,setTimes = TRUE)
+    if (file.exists(just_extract_code_file)) file.remove(just_extract_code_file)
+    return(TRUE)
+  }
+
+  # 1. Get all files in ZIP
+  file_df = unzip(sup_zip, list = TRUE)
+
+  names(file_df) = c("file_path","mb","timestamp")
+  file_df$mb = file_df$mb / 1e6
+  file_df$file_type = tolower(tools::file_ext(file_df$file_path))
+
+  if (remove_macosx_dirs) {
+    ignore = has.substr(file_df$file_path, "__MACOSX")
+    file_df = file_df[!ignore,]
+  }
+
+  meta_dir = file.path(project_dir, "meta")
+  if (!dir.exists(meta_dir)) dir.create(meta_dir)
+  saveRDS(file_df, file.path(meta_dir, "sup_files.Rds"))
+
+
+  # 2. Unzip R and stata scripts files
+  code_files = file_df$file_path[file_df$file_type %in% c("r","do","rmd","ado")]
+  if (length(code_files)>0) {
+    unzip(sup_zip,files = code_files,exdir = org.dir)
+  } else {
+    dir.create(org.dir)
+  }
+
+  # 3. Store note that just code has been extracted
+  if (!dir.exists(steps.dir)) dir.create(steps.dir, recursive = TRUE)
+  writeLines("yes", just_extract_code_file)
+
+  return(TRUE)
+
 }
 
 
