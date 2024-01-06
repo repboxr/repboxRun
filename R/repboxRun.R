@@ -61,10 +61,12 @@ repbox_run_project = function(project_dir, lang = c("stata","r")[1], steps = rep
   repbox.stata.dir = file.path(project_dir, "repbox/stata")
   repbox.r.dir = file.path(project_dir, "repbox/r")
 
+  artid = basename(project_dir)
+
   parcels = list(.files = list())
 
   if (steps$file_info) {
-    parcels$.files$org = make.project.files.info(project_dir,for.org=TRUE, for.mod = FALSE)$org
+    parcels = sup_save_basic_info(project_dir, parcels)
   }
 
   if (steps$static_code) {

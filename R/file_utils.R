@@ -113,3 +113,10 @@ repbox_make_script_parcel = function(project_dir, parcels) {
   return(parcels)
 }
 
+special_file_types = function() {
+  unlist(list(
+    code = c("do","ado","r","mod","nb","py","m", "sas","prg", "ztt","c","java","cpp","js","f95","f90", "tsp","g","lng","gms","jl"),
+    data = c("dta","csv","xls","xlsx","mat","dat","sas7bdat","rdata","rds", "xml","json", "tab"),
+    archive =  c("7z","gz","tar","zip")
+  ))
+}
