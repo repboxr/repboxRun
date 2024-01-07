@@ -17,7 +17,7 @@ repbox_steps_from = function(file_info = FALSE, static_code=file_info, art=stati
 #' Specify options for repbox analysis
 #'
 #' @export
-repbox_run_opts = function(stop.on.error = TRUE, stata_version = 17, slimify = FALSE, slimify_org=slimify, store_data_caches=TRUE, timeout = 60*5, stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),r_opts = repbox_r_opts(), art_opts = repbox_art_opts(), map_opts=repbox_map_opts(), html_opts = repbox_html_opts()) {
+repbox_run_opts = function(stop.on.error = TRUE, stata_version = 17, slimify = FALSE, slimify_org=slimify, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE, stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),r_opts = repbox_r_opts(), art_opts = repbox_art_opts(), map_opts=repbox_map_opts(), html_opts = repbox_html_opts()) {
   list(
     stop.on.error = stop.on.error,
     stata_version = stata_version,
@@ -25,6 +25,7 @@ repbox_run_opts = function(stop.on.error = TRUE, stata_version = 17, slimify = F
     store_data_caches = store_data_caches,
     slimify = slimify,
     slimify_org = slimify,
+    remove_existing_problems = remove_existing_problems,
     stata_opts = stata_opts,
     r_opts = r_opts,
     art_opts = art_opts,

@@ -42,13 +42,13 @@ example = function() {
 #' @export
 repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox_steps_all(), opts = repbox_run_opts()) {
   restore.point("repbox_run_project")
-
   options(dplyr.summarise.inform = FALSE)
 
   if (!dir.exists(project_dir)) {
     cat("\nProject directory", project_dir, "does not exist!\n")
     return(invisible(FALSE))
   }
+  repbox_set_current_project_dir(project_dir)
   dap.file = paste0(project_dir,"/metareg/dap/stata/dap.Rds")
 
   show_title = function(str) {
@@ -60,6 +60,13 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
   repbox.dir = file.path(project_dir, "repbox")
   repbox.stata.dir = file.path(project_dir, "repbox/stata")
   repbox.r.dir = file.path(project_dir, "repbox/r")
+
+  # Delete existing problems directory
+  problems.dir = file.path(project_dir, "problems")
+  if (opts$remove_existing_problems) {
+    remove.dir(problems.dir, must.contain = project_dir)
+  }
+
 
   artid = basename(project_dir)
 
