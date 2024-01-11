@@ -130,12 +130,12 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     repbox_log_step_start(project_dir, "reproduction", opts)
 
     if (dir.exists(sup.dir)) remove.dir(sup.dir)
+
     # Keep file dates so that we can better
     # see which files are overwritten when comparing
     # original to modified supplement
     copy.dir(org.dir, sup.dir,copy.date=TRUE)
     unzip.zips(sup.dir)
-
     make.project.files.info(project_dir, for.mod = TRUE, for.org=TRUE)
 
     # Remove all files except for code files in org folder
@@ -150,6 +150,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
 
       dap_and_cache_remove_from_project(project_dir)
       res = repbox_project_run_stata(project_dir,opts=opts$stata_opts)
+      parcels = repbox_save_stata_run_parcels(project_dir, parcels)
     }
     if ("r" %in% lang) {
       parcels = repbox_project_run_r(project_dir, opts=opts$r_opts,parcels = parcels)
@@ -159,9 +160,15 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     repbox_log_step_end(project_dir, "reproduction")
   }
 
-  if (steps$reg & "stata" %in% lang) {
+  parcels = repdb_load_parcels(project_dir, "stata_run_info", parcels=parcels)
+  has_stata_regs = isTRUE(parcels$stata_run_info$stata_run_info$reg_runs > 0)
+  has_ok_stata_regs = isTRUE(parcels$stata_run_info$stata_run_info$ok_reg_runs > 0)
+
+
+  if (steps$reg & "stata" %in% lang & has_ok_stata_regs) {
     show_title("Rerun Stata scripts to extract regression information")
     repbox_log_step_start(project_dir, "reg", opts)
+
     dap = get.project.dap(project_dir, make.if.missing = TRUE)
 
     if (opts$store_data_caches) {
@@ -180,10 +187,18 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     stata_opts$extract.reg.info = TRUE
     stata_opts$store.data = store.data
     res = repbox_project_run_stata(project_dir,opts=stata_opts)
+    parcels = repbox_save_stata_reg_run_parcels(project_dir, parcels)
     repbox_log_step_end(project_dir, "reg")
+  } else if (steps$reg & "stata" %in% lang & !has_stata_regs) {
+    show_title("Rerun Stata scripts to extract regression information")
+    cat("\n  No Stata regression command was originally run.\n")
+  } else if (steps$reg & "stata" %in% lang & !has_ok_stata_regs) {
+    show_title("Rerun Stata scripts to extract regression information")
+    cat("\n  No Stata regression command was originally run without error.\n")
   }
 
-  if (steps$mr_base & "stata" %in% lang) {
+
+  if (steps$mr_base & "stata" %in% lang & has_ok_stata_regs) {
     show_title("Base Metareg")
     repbox_log_step_start(project_dir, "mr_base", opts)
     res = mr_base_run_study(project_dir, stop.on.error = opts$stop.on.error,create.repdb = TRUE,stata_version = opts$stata_version)
@@ -194,11 +209,9 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
   if (steps$repbox_repdb) {
     show_title("Store repbox repdb")
     repbox_log_step_start(project_dir, "repbox_repdb", opts)
-    parcels = repbox_to_repdb(project_dir)
+    parcels = repbox_to_repdb(project_dir, parcels)
     repbox_log_step_end(project_dir, "repbox_repdb")
   }
-
-
 
   if (steps$map) {
     show_title("Create Mappings")
