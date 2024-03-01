@@ -2,14 +2,18 @@ example = function() {
   library(repboxRun)
   artid = "aejpol_3_4_8"
   artid = "aejmic_6_3_9"
-  projects.dir = "~/repbox/projects_reg"
+  projects.dir = "~/repbox/projects_test"
   repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
-  project_dir = "C:/libraries/repbox/projects_reg/testr"
-  steps = repbox_steps_from(static_code=TRUE, art=FALSE)
-  repbox_run_project(project_dir,lang=NULL, steps=steps)
+  project_dir = "~/repbox/projects_test/aejapp_1_2_7"
+  steps = repbox_steps_from(file_info = TRUE)
+  repbox_run_project(project_dir,lang="stata", steps=steps)
   rstudioapi::filesPaneNavigate(project_dir)
+
+  steps = repbox_steps_from(html = TRUE)
+  html_opts = repboxHtml::repbox_html_opts_just_ejd()
+  repbox_run_project(project_dir,lang="stata", steps=steps, opts=repbox_run_opts(html_opts = html_opts))
 
 
   project_dir = "/home/rstudio/repbox/projects_reg/testsupp"

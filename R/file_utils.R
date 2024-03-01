@@ -34,8 +34,8 @@ repbox_get_org_sup_files = function(project_dir) {
 
   file = file.path(project_dir, "meta","sup_files.Rds")
   if (file.exists(file)) {
-    files_df = readRDS(file)
-    return(files_df)
+    file_df = readRDS(file)
+    return(file_df)
   }
 
   if (repbox_has_just_extracted_code(project_dir)) {
@@ -44,13 +44,10 @@ repbox_get_org_sup_files = function(project_dir) {
 
   file = file.path(project_dir, "repbox","org_files.Rds")
   if (file.exists(file)) {
-    files_df = readRDS(file)
+    file_df = readRDS(file)
   } else {
-    files_df = make.project.files.info(project_dir,for.mod=FALSE)$org
+    file_df = make.project.files.info(project_dir,for.mod=FALSE)$org
   }
-  names(file_df) = c("file_path","mb","timestamp")
-  file_df$mb = file_df$mb / 1e6
-  file_df$file_type = tolower(tools::file_ext(file_df$file_path))
 
   file_df = file_df %>%
     transmute(
