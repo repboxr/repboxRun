@@ -1,13 +1,14 @@
 example = function() {
   library(repboxRun)
   artid = "aejpol_3_4_8"
-  artid = "aejmic_6_3_9"
+  artid = "aejapp_1_3_4"
   projects.dir = "~/repbox/projects_test"
   repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
-  project_dir = "~/repbox/projects_test/aejapp_1_2_7"
+  project_dir = "~/repbox/projects_test/aejapp_1_3_4"
   steps = repbox_steps_from(file_info = TRUE)
+  opts = repbox_run_opts()
   repbox_run_project(project_dir,lang="stata", steps=steps)
   rstudioapi::filesPaneNavigate(project_dir)
 
