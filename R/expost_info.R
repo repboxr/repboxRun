@@ -1,10 +1,12 @@
 example = function() {
   parent_dir = "~/repbox/projects_static"
+  parent_dir = "~/repbox/projects_gha"
   project_dirs = list.dirs(parent_dir, recursive = FALSE)
   for (project_dir in project_dirs) {
     repbox_store_project_problems(project_dir)
   }
 
+  project_dir = first(project_dirs)
   for (project_dir in project_dirs) {
     repbox_store_step_timing(project_dir)
   }
@@ -16,11 +18,20 @@ repbox_store_step_timing = function(project_dir, parcels=list()) {
   step_files = list.files(file.path(project_dir,"steps"), glob2rx("*.Rds"),full.names = TRUE)
 
   base = basename(step_files)
+
+  time_li = lapply(step_files, function(file) {
+    dat = readRDS(file)
+    as.numeric(dat[[1]])
+  }) %>% unlist()
+
+
   df = data.frame(
     step = str.left.of(base, "."),
     start_end = str.between(base, ".","."),
-    time = file.mtime(step_files)
+    time = time_li
   ) %>% arrange(step, start_end)
+
+
 
   step_timing = df %>%
     group_by(step) %>%

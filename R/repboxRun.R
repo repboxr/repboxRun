@@ -81,6 +81,10 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     show_title("Extract supplement's basic file information")
     repbox_log_step_start(project_dir, "file_info", opts=NULL)
     parcels = sup_save_basic_info(project_dir, parcels)
+
+    # Also save article basic info
+    repboxArt::art_save_basic_info(project_dir)
+
     repbox_log_step_end(project_dir, "file_info")
   }
 
