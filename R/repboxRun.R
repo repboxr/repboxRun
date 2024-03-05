@@ -1,5 +1,6 @@
 example = function() {
   library(repboxRun)
+  library(repboxEJD)
   artid = "aejpol_3_4_8"
   artid = "aejapp_1_3_4"
   projects.dir = "~/repbox/projects_test"
@@ -8,7 +9,8 @@ example = function() {
 
   project_dir = "~/repbox/projects_test/aejapp_1_3_4"
   steps = repbox_steps_from(file_info = TRUE)
-  opts = repbox_run_opts()
+  html_opts = repbox_html_opts_just_ejd()
+  opts = repbox_run_opts(html_opts=html_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps)
   rstudioapi::filesPaneNavigate(project_dir)
 
