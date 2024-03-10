@@ -48,10 +48,36 @@ repbox_store_step_timing = function(project_dir, parcels=list()) {
 
 repbox_store_project_problems = function(project_dir, parcels=list()) {
   restore.point("repbox_store_project_problems")
+
+  prob_li = vector("list",0)
+
+  parcels = repdb_load_parcels(project_dir, "stata_do_run_info",parcels = parcels)
+  info = parcels$stata_do_run_info$stata_do_run_info
+  if (NROW(info)>0) {
+    num = sum(info$timeout, na.rm = TRUE)
+    if (num > 0) {
+      prob_li[[length(prob_li)+1]] = list(type="timeout", msg = paste0(num, " do files had a timeout."))
+    }
+    num = sum(info$num_load_data_err, na.rm=TRUE)
+    if (num > 0) {
+      prob_li[[length(prob_li)+1]] = list(type="missing_data", msg = paste0(num, " data load commands did not work."))
+    }
+    num = sum(info$has_parse_err, na.rm=TRUE)
+    if (num > 0) {
+      prob_li[[length(prob_li)+1]] = list(type="parse_error", msg = paste0(num, " do files had a parse errors."))
+    }
+  }
+
+
   problem_dir = file.path(project_dir,"problems")
   repdb_dir = file.path(project_dir,"repdb")
   prob_files = list.files(problem_dir,full.names = TRUE)
-  if (length(prob_files)==0) {
+
+  prob_li = c(
+    prob_li,
+    lapply(prob_files, readRDS)
+  )
+  if (length(prob_li)==0) {
     problem_rds = file.path(repdb_dir,"problem.Rds")
     if (file.exists(problem_rds)) {
       file.remove(problem_rds)
@@ -59,11 +85,12 @@ repbox_store_project_problems = function(project_dir, parcels=list()) {
     return(parcels)
   }
 
-  file = first(prob_files)
-  prob_df = lapply(prob_files, function(file) {
-    prob = readRDS(file)
-    data.frame(problem_type = prob$type, problem_descr = prob$msg)
-  }) %>% bind_rows()
+  prob_df = lapply(prob_li, function(x) {
+    as.data.frame(x[1:2])
+  }) %>%
+    bind_rows()
+  names(prob_df) = c("problem_type", "problem_descr")
+
   prob_df$artid = basename(project_dir)
 
   parcels$problem = list(problem=prob_df)
