@@ -17,7 +17,7 @@ sup_save_basic_info = function(project_dir, parcels=list()) {
       artid = first(artid),
       num_files = n(),
       mb = sum(mb, na.rm=TRUE),
-      latest_timestamp = max(timestamp)
+      latest_timestamp = suppressWarnings(max(timestamp))
     )
 
 
