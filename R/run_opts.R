@@ -2,7 +2,7 @@
 #'
 #' Can be used as argument steps in repbox_run_project
 repbox_steps_all = function() {
-  repbox_steps_from(static_code=TRUE)
+  repbox_steps_from(TRUE)
 }
 
 #' Returns steps of a repbox analysis specified by starting or ending steps
