@@ -43,6 +43,7 @@ sup_save_basic_info = function(project_dir, parcels=list()) {
   sup$mb = sum(file_info$mb)
   sup$latest_timestamp = max(file_info$timestamp)
 
+  sup = as_tibble(sup)
 
   parcels$sup = list(sup=sup)
   parcels$file_info = list(file_info=file_info)
