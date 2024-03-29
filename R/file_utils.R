@@ -46,7 +46,11 @@ repbox_get_org_sup_files = function(project_dir) {
   if (file.exists(file)) {
     file_df = readRDS(file)
   } else {
-    file_df = make.project.files.info(project_dir,for.mod=FALSE)$org
+    if (dir.exists(file.path(project_dir,"org"))) {
+      file_df = make.project.files.info(project_dir,for.mod=FALSE)$org
+    } else {
+      stop("Cannot anymore generate file_df since org folder does not exist and no previous file info was stored...")
+    }
   }
 
   file_df = file_df %>%
@@ -71,6 +75,7 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
 
   if (for.org) {
     dir = file.path(project_dir,"org")
+
 
     setwd(dir)
     files = list.files(dir,recursive = TRUE,include.dirs = FALSE)
