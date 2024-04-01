@@ -2,13 +2,14 @@ example = function() {
   library(repboxRun)
   library(repboxEJD)
   artid = "aejpol_3_4_8"
-  artid = "aejapp_16_1_12"
+  artid = "jeea_18_5_13"
   projects.dir = "~/repbox/projects_test"
   repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
+  steps = repbox_steps_from(file_info = FALSE,mr_base = TRUE)
   html_opts = repbox_html_opts_just_ejd()
   opts = repbox_run_opts(html_opts=html_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps)
@@ -19,10 +20,15 @@ example = function() {
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=repbox_run_opts(html_opts = html_opts))
 
 
-  project_dir = "/home/rstudio/repbox/projects_reg/testsupp"
+  project_dir = "/home/rstudio/repbox/projects_test/testsupp"
+  restore.point.options(display.restore.point = TRUE)
+  html_opts = repboxHtml::repbox_html_opts_just_ejd()
+  opts = repbox_run_opts(html_opts = html_opts)
+  steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE)
+  repbox_run_project(project_dir, steps=steps, opts=opts)
 
-  steps = repbox_run_steps_from(static_code=TRUE, art=FALSE, reproduction = FALSE)
-  repbox_run_project(project_dir, steps=steps)
+
+  rstudioapi::filesPaneNavigate(project_dir)
 
   library(repboxRun)
   project_dir = "/home/rstudio/repbox/projects_reg/aejmac_6_3_1"
