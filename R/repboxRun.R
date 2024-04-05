@@ -9,11 +9,14 @@ example = function() {
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
-  steps = repbox_steps_from(file_info = FALSE,mr_base = TRUE)
+  steps = repbox_steps_from(file_info = FALSE,map = TRUE)
   html_opts = repbox_html_opts_just_ejd()
-  opts = repbox_run_opts(html_opts=html_opts)
-  repbox_run_project(project_dir,lang="stata", steps=steps)
+  opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
+  opts = repbox_run_opts(stop.on.error = FALSE)
+  repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
+
+
 
   steps = repbox_steps_from(html = TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
@@ -21,7 +24,8 @@ example = function() {
 
 
   project_dir = "/home/rstudio/repbox/projects_test/testsupp"
-  restore.point.options(display.restore.point = TRUE)
+  options(warn=1)
+  restore.point.options(display.restore.point = !TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
   opts = repbox_run_opts(html_opts = html_opts)
   steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE)
