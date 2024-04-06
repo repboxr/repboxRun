@@ -4,15 +4,15 @@ example = function() {
   artid = "aejpol_3_4_8"
   artid = "jeea_18_5_13"
   projects.dir = "~/repbox/projects_test"
-  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
-  steps = repbox_steps_from(file_info = FALSE,map = TRUE)
+  steps = repbox_steps_from(file_info = FALSE,art = TRUE,reproduction = FALSE,map=TRUE, html = TRUE)
   html_opts = repbox_html_opts_just_ejd()
   opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
-  opts = repbox_run_opts(stop.on.error = FALSE)
+  opts = repbox_run_opts(stop.on.error = FALSE, art_opts = repbox_art_opts(overwrite=TRUE))
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
 
