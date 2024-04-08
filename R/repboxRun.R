@@ -2,18 +2,18 @@ example = function() {
   library(repboxRun)
   library(repboxEJD)
   artid = "aejpol_3_4_8"
-  artid = "restat_4786679"
+  artid = "ms_69_9_19"
   projects.dir = "~/repbox/projects_test"
-  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(file_info = FALSE,art = TRUE,reproduction = FALSE,map=TRUE, html = TRUE)
-  #steps = repbox_steps_from(mr_base = TRUE)
+  steps = repbox_steps_from(mr_base = TRUE)
   #html_opts = repbox_html_opts_just_ejd()
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
-  opts = repbox_run_opts(stop.on.error = TRUE,problem_fail_action = "msg", art_opts = repbox_art_opts(overwrite=TRUE))
+  opts = repbox_run_opts(stop.on.error = TRUE, art_opts = repbox_art_opts(overwrite=TRUE))
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
 
@@ -24,6 +24,7 @@ example = function() {
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=repbox_run_opts(html_opts = html_opts))
 
 
+  library(repboxRun)
   project_dir = "/home/rstudio/repbox/projects_test/testsupp"
   options(warn=1)
   restore.point.options(display.restore.point = !TRUE)
