@@ -1,16 +1,16 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aejpol_3_4_8"
-  artid = "ms_69_9_19"
+  artid = "aejpol_12_1_2"
+  #artid = "jpe_127_3_8"
   projects.dir = "~/repbox/projects_test"
-  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(file_info = FALSE,art = TRUE,reproduction = FALSE,map=TRUE, html = TRUE)
-  steps = repbox_steps_from(mr_base = TRUE)
+  #steps = repbox_steps_from(mr_base = TRUE)
   #html_opts = repbox_html_opts_just_ejd()
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   opts = repbox_run_opts(stop.on.error = TRUE, art_opts = repbox_art_opts(overwrite=TRUE))
