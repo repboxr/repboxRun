@@ -1,10 +1,9 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aejpol_12_1_2"
-  #artid = "jpe_127_3_8"
+  artid = "ms_69_9_4"
   projects.dir = "~/repbox/projects_test"
-  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
@@ -13,7 +12,8 @@ example = function() {
   #steps = repbox_steps_from(mr_base = TRUE)
   #html_opts = repbox_html_opts_just_ejd()
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
-  opts = repbox_run_opts(stop.on.error = TRUE, art_opts = repbox_art_opts(overwrite=TRUE))
+  #steps = repbox_steps_from(file_info = TRUE,art = FALSE,reproduction = TRUE)
+  opts = repbox_run_opts(stop.on.error = TRUE,timeout = 1*60, art_opts = repbox_art_opts(overwrite=TRUE))
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
 
@@ -30,7 +30,7 @@ example = function() {
   restore.point.options(display.restore.point = !TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
   opts = repbox_run_opts(html_opts = html_opts)
-  steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE)
+  steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE)
   repbox_run_project(project_dir, steps=steps, opts=opts)
 
 
@@ -209,6 +209,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
 
     stata_opts = opts$stata_opts
     stata_opts$extract.reg.info = TRUE
+    stata_opts$extract.scalar.vals = TRUE
     stata_opts$store.data = store.data
     res = repbox_project_run_stata(project_dir,opts=stata_opts)
     parcels = repbox_save_stata_reg_run_parcels(project_dir, parcels)
