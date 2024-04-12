@@ -1,9 +1,9 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "ms_69_9_4"
+  artid = "aejpol_10_4_7"
   projects.dir = "~/repbox/projects_test"
-  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
@@ -13,11 +13,9 @@ example = function() {
   #html_opts = repbox_html_opts_just_ejd()
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(file_info = TRUE,art = FALSE,reproduction = TRUE)
-  opts = repbox_run_opts(stop.on.error = TRUE,timeout = 1*60, art_opts = repbox_art_opts(overwrite=TRUE))
+  opts = repbox_run_opts(stop.on.error = FALSE,timeout = 1*60, art_opts = repbox_art_opts(overwrite=TRUE))
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
-
-
 
   steps = repbox_steps_from(html = TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
@@ -26,11 +24,11 @@ example = function() {
 
   library(repboxRun)
   project_dir = "/home/rstudio/repbox/projects_test/testsupp"
-  options(warn=1)
+  options(warn=2)
   restore.point.options(display.restore.point = !TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
   opts = repbox_run_opts(html_opts = html_opts)
-  steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE,map = FALSE,html = TRUE)
+  steps = repbox_steps_from(file_info = TRUE,static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE,map = FALSE,html = TRUE)
   repbox_run_project(project_dir, steps=steps, opts=opts)
 
 
@@ -153,7 +151,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     show_title("Reproduction of initial supplement")
     repbox_log_step_start(project_dir, "reproduction", opts)
 
-    if (dir.exists(sup.dir)) remove.dir(sup.dir)
+    if (dir.exists(sup.dir)) remove.dir(sup.dir,must.contain = project_dir)
 
     # Keep file dates so that we can better
     # see which files are overwritten when comparing
@@ -169,7 +167,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
 
 
     if ("stata" %in% lang) {
-      remove.dir(repbox.stata.dir)
+      remove.dir(repbox.stata.dir,must.contain = project_dir)
       dir.create(repbox.stata.dir)
 
       dap_and_cache_remove_from_project(project_dir)
@@ -203,7 +201,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
       store.data = NULL
     }
 
-    if (dir.exists(sup.dir)) remove.dir(sup.dir)
+    if (dir.exists(sup.dir)) remove.dir(sup.dir,must.contain = project_dir)
     copy.dir(org.dir, sup.dir,copy.date=TRUE)
     unzip.zips(sup.dir)
 
