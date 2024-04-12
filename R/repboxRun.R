@@ -30,7 +30,7 @@ example = function() {
   restore.point.options(display.restore.point = !TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
   opts = repbox_run_opts(html_opts = html_opts)
-  steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE)
+  steps = repbox_steps_from(static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE,map = FALSE,html = TRUE)
   repbox_run_project(project_dir, steps=steps, opts=opts)
 
 
@@ -211,8 +211,10 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     stata_opts$extract.reg.info = TRUE
     stata_opts$extract.scalar.vals = TRUE
     stata_opts$store.data = store.data
-    res = repbox_project_run_stata(project_dir,opts=stata_opts)
+    parcels = repbox_project_run_stata(project_dir,opts=stata_opts, parcels=parcels)
     parcels = repbox_save_stata_reg_run_parcels(project_dir, parcels)
+    #restore.point("hfjhfksf")
+    res = dap_create_stata_scalar_info(project_dir = project_dir, dap=dap, scalar_df = parcels$stata_scalar$stata_scalar)
     repbox_log_step_end(project_dir, "reg")
   } else if (steps$reg & "stata" %in% lang & !has_stata_regs) {
     show_title("Rerun Stata scripts to extract regression information")
