@@ -173,6 +173,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
       dap_and_cache_remove_from_project(project_dir)
       res = repbox_project_run_stata(project_dir,opts=opts$stata_opts)
       parcels = repbox_save_stata_run_parcels(project_dir, parcels)
+      parcels = make_parcel_stata_do_run_info(project_dir, parcels)
     }
     if ("r" %in% lang) {
       parcels = repbox_project_run_r(project_dir, opts=opts$r_opts,parcels = parcels)
