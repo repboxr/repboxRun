@@ -1,7 +1,7 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "pandp_112_1_71"
+  artid = "aer_105_12_2"
   projects.dir = "~/repbox/projects_test"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
@@ -27,7 +27,7 @@ example = function() {
   options(warn=2)
   restore.point.options(display.restore.point = !TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
-  opts = repbox_run_opts(html_opts = html_opts)
+  opts = repbox_run_opts(timeout = 3, html_opts = html_opts)
   steps = repbox_steps_from(file_info = TRUE,static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE,map = FALSE,html = TRUE)
   repbox_run_project(project_dir, steps=steps, opts=opts)
 
