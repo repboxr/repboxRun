@@ -1,19 +1,19 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aer_107_3_1"
+  artid = "pandp_112_1_71"
   projects.dir = "~/repbox/projects_test"
-  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(reproduction = FALSE, map=TRUE, html = TRUE)
   #steps = repbox_steps_from(mr_base = TRUE)
-  #html_opts = repbox_html_opts_just_ejd()
+  html_opts = repbox_html_opts(make_what = c("ejd","general"))
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(file_info = TRUE,art = FALSE,reproduction = TRUE)
-  opts = repbox_run_opts(stop.on.error = FALSE,timeout = 1*60, art_opts = repbox_art_opts(overwrite=TRUE))
+  opts = repbox_run_opts(stop.on.error = FALSE,timeout = 1*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
 
