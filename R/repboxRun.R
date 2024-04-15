@@ -1,19 +1,20 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aer_105_12_2"
+  artid = "aejapp_6_1_5"
   projects.dir = "~/repbox/projects_test"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
 
   project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
-  #steps = repbox_steps_from(reproduction = FALSE, map=TRUE, html = TRUE)
+  #steps = repbox_steps_from(reproduction = TRUE, map=TRUE, html = TRUE)
   #steps = repbox_steps_from(mr_base = TRUE)
   html_opts = repbox_html_opts(make_what = c("ejd","general"))
+  stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(file_info = TRUE,art = FALSE,reproduction = TRUE)
-  opts = repbox_run_opts(stop.on.error = FALSE,timeout = 1*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
+  opts = repbox_run_opts(stop.on.error = FALSE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts, stata_opts = stata_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
 
