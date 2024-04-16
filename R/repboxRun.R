@@ -1,7 +1,7 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aejapp_6_1_5"
+  artid = "aejmac_12_3_10"
   projects.dir = "~/repbox/projects_test"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
@@ -13,10 +13,13 @@ example = function() {
   html_opts = repbox_html_opts(make_what = c("ejd","general"))
   stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
-  #steps = repbox_steps_from(file_info = TRUE,art = FALSE,reproduction = TRUE)
-  opts = repbox_run_opts(stop.on.error = FALSE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts, stata_opts = stata_opts)
+  steps = repbox_steps_from(file_info = TRUE,art = FALSE,reproduction = TRUE)
+  options(warn=1)
+  opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts, stata_opts = stata_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(project_dir)
+
+  repboxExplore::make_reg_playground(project_dir, steps = 16)
 
   steps = repbox_steps_from(html = TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
@@ -32,6 +35,8 @@ example = function() {
   steps = repbox_steps_from(file_info = TRUE,static_code=TRUE, art=FALSE, reproduction = TRUE,reg = TRUE,mr_base = TRUE,map = FALSE,html = TRUE)
   repbox_run_project(project_dir, steps=steps, opts=opts)
 
+  dap = readRDS(file.path(project_dir, "metareg/dap/stata/dap.Rds"))
+  plot.dap(dap)
 
   rstudioapi::filesPaneNavigate(project_dir)
 
