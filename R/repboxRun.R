@@ -1,7 +1,7 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aer_108_12_8"
+  artid = "jep_34_1_6"
   projects.dir = "~/repbox/projects_test"
   repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
