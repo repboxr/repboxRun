@@ -1,8 +1,8 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aejapp_6_1_5"
-  projects.dir = "~/repbox/projects_test"
+  artid = "aejmac_12_3_10"
+  projects.dir = "~/repbox/projects_gha"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
   project_dir = paste0("~/repbox/projects_test/",artid)
@@ -12,7 +12,7 @@ example = function() {
   html_opts = repbox_html_opts(make_what = c("ejd","general"))
   #stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
-  steps = repbox_steps_from(map = TRUE,html=FALSE)
+  #steps = repbox_steps_from(map = TRUE,html=FALSE)
   options(warn=1)
   opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
@@ -271,4 +271,21 @@ repbox_log_step_end = function(project_dir, step) {
   step.info.dir = file.path(project_dir,"steps")
   file = paste0(step.info.dir, "/",step,".end.Rds")
   saveRDS(list(end_time = Sys.time()), file)
+}
+
+
+example_update_step = function() {
+  library(repboxRun)
+  library(repboxEJD)
+
+  project_dirs = list.dirs("~/repbox/projects_gha",recursive = FALSE, full.names = TRUE)
+
+  project_dir = project_dirs[1]
+  for (project_dir in project_dirs) {
+    cat("\n", project_dir,"\n")
+    steps = repbox_steps_from(map = TRUE,html=FALSE)
+    opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE))
+    repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
+  }
+  rstudioapi::filesPaneNavigate(project_dir)
 }
