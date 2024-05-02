@@ -73,8 +73,8 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
     dir.create(file.path(project_dir,"repbox"))
   }
 
-  if (for.org) {
-    dir = file.path(project_dir,"org")
+  dir = file.path(project_dir,"org")
+  if (for.org & dir.exists(dir)) {
 
 
     setwd(dir)
@@ -89,8 +89,8 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
     saveRDS(fi,file.path(project_dir,"repbox/org_files.Rds"))
   }
 
-  if (for.mod) {
-    dir = file.path(project_dir,"mod")
+  dir = file.path(project_dir,"mod")
+  if (for.mod & dir.exists(dir)) {
     setwd(dir)
     files = list.files(dir,recursive = TRUE,include.dirs = FALSE)
     fi = as.data.frame(file.info(files))

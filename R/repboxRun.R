@@ -1,18 +1,18 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "aejmac_12_3_10"
+  artid = "aejpol_12_1_2"
   projects.dir = "~/repbox/projects_gha"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
-  project_dir = paste0("~/repbox/projects_test/",artid)
-  steps = repbox_steps_from(file_info = TRUE)
+  project_dir = paste0("~/repbox/projects_gha/",artid)
+  #steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(reproduction = TRUE, map=TRUE, html = TRUE)
   #steps = repbox_steps_from(mr_base = TRUE)
   html_opts = repbox_html_opts(make_what = c("ejd","general"))
   #stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
-  #steps = repbox_steps_from(map = TRUE,html=FALSE)
+  steps = repbox_steps_from(map = TRUE,html=FALSE)
   options(warn=1)
   opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
@@ -280,11 +280,18 @@ example_update_step = function() {
 
   project_dirs = list.dirs("~/repbox/projects_gha",recursive = FALSE, full.names = TRUE)
 
+  which(endsWith(project_dirs,"aer_108_6_7"))
+  project_dirs = project_dirs[-c(1:291)]
   project_dir = project_dirs[1]
   for (project_dir in project_dirs) {
     cat("\n", project_dir,"\n")
     steps = repbox_steps_from(map = TRUE,html=FALSE)
     opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 5*60, art_opts = repbox_art_opts(overwrite=TRUE))
+
+    cat("\nFind table refereences in code...")
+    library(repboxCodeText)
+    res = code_project_find_refs(project_dir = project_dir, parcels=NULL)
+
     repbox_run_project(project_dir,lang="stata", steps=steps, opts=opts)
   }
   rstudioapi::filesPaneNavigate(project_dir)
