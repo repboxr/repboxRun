@@ -1,23 +1,26 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "restud_87_2_3"
+  artid = "ecta_84_2_6"
+  rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
+
+  artid = "ecta_84_2_6"
   projects.dir = "~/repbox/projects_test"
-  repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
+  #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
   Project_dir = paste0("~/repbox/projects_test/",artid)
   steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(reproduction = TRUE, map=TRUE, html = TRUE)
   #steps = repbox_steps_from(mr_base = TRUE)
-  steps = repbox_steps_from(art=TRUE, static_code=FALSE)
+  #steps = repbox_steps_from(art=TRUE, static_code=FALSE)
   html_opts = repbox_html_opts(make_what = c("ejd","general"))
   #stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(map = TRUE,html=FALSE)
   options(warn=1)
-  opts = repbox_run_opts(stop.on.error = TRUE,timeout = 10*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
+  opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 10*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(Project_dir,lang="stata", steps=steps, opts=opts)
-  rstudioapi::filesPaneNavigate(project_dir)
+  rstudioapi::filesPaneNavigate(Project_dir)
   rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
 
   #repboxExplore::make_reg_playground(project_dir, steps = 16)
