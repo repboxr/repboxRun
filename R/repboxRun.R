@@ -1,11 +1,12 @@
 example = function() {
   library(repboxRun)
   library(repboxEJD)
-  artid = "ecta_84_2_6"
-  rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
+  #artid = "ecta_84_2_6"
+  #rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
 
-  artid = "ecta_84_2_6"
+  artid = "aejmac_3_3_5"
   projects.dir = "~/repbox/projects_test"
+  projects.dir = "~/repbox/projects_gha"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
   Project_dir = paste0("~/repbox/projects_test/",artid)
