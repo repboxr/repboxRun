@@ -4,12 +4,12 @@ example = function() {
   #artid = "ecta_84_2_6"
   #rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
 
-  artid = "aejmac_3_3_5"
+  artid = "aejpol_9_3_5"
   projects.dir = "~/repbox/projects_test"
   projects.dir = "~/repbox/projects_gha"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
-  Project_dir = paste0("~/repbox/projects_test/",artid)
+  Project_dir = paste0("~/repbox/projects_gha/",artid)
   steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(reproduction = TRUE, map=TRUE, html = TRUE)
   #steps = repbox_steps_from(mr_base = TRUE)
