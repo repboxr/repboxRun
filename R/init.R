@@ -89,7 +89,10 @@ repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remov
   # 2. Unzip R and stata scripts files
   code_files = file_df$file_path[file_df$file_type %in% c("r","do","rmd","ado")]
   if (length(code_files)>0) {
-    unzip(sup_zip,files = code_files,exdir = org.dir)
+    # internal unzip more often claims that ZIP is
+    # corrupted while command line unzip works
+    #unzip(sup_zip,files = code_files,exdir = org.dir, unzip="unzip")
+    robust_unzip(normalizePath(sup_zip), exdir=normalizePath(org.dir), files=code_files)
   } else {
     dir.create(org.dir)
   }
@@ -130,4 +133,24 @@ remove_macosx_dirs = function(parent.dir) {
   }
 }
 
+# R's internal unzip command too often thinks the ZIP file of a replication package
+# is corrupted even though linux command line unzip is able to unzip it.
+robust_unzip = function(zipfile, exdir, files=NULL, overwrite=TRUE, verbose=FALSE) {
+  restore.point("robust_unzip")
+  if (overwrite) {
+    cmd = paste0("unzip -o ")
+  } else {
+    cmd = paste0("unzip -n ")
+  }
+
+  if (is.null(files)) {
+    cmd = paste0(cmd, '"', normalizePath(zipfile), '" -d "', normalizePath(exdir),'"')
+  } else {
+    cmd = paste0(cmd,'"', normalizePath(zipfile), '" ', paste0('"',files,'"', collapse=" "), ' -d "', normalizePath(exdir),'"')
+
+  }
+  cat(cmd)
+  system(cmd,ignore.stdout = !verbose)
+  #rstudioapi::filesPaneNavigate(exdir)
+}
 
