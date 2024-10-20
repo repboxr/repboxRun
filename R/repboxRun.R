@@ -138,7 +138,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     parcels = repbox_make_script_parcel(project_dir, parcels)
     if ("stata" %in% lang) {
       cat("\n  Stata static code analysis...\n\n")
-      parcels = repbox_stata_static_parcel(project_dir, parcels=parcels)
+      parcels = repbox_stata_static_parcel(project_dir, parcels=parcels, opts=opts)
       parcels = repboxCodeText::code_project_find_refs(project_dir, parcels=parcels)
     }
     if ("r" %in% lang) {

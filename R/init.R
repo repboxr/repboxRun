@@ -32,7 +32,11 @@ repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_f
 
   # Copy supplement ZIP content into org.dir
   if (!is.null(sup_zip) & (overwrite_org | !(dir.exists(org.dir)))) {
-    repbox_sup_extract_zip(project_dir, sup_zip, just_extract_code, remove_macosx_dirs=remove_macosx_dirs)
+    # Some reproduction packages consist of multiple zip
+    # files
+    for (zip_file in sup_zip) {
+      repbox_sup_extract_zip(project_dir, zip_file, just_extract_code, remove_macosx_dirs=remove_macosx_dirs)
+    }
   }
 
   if (!dir.exists(org.dir)) {
@@ -63,11 +67,6 @@ repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remov
   repbox.dir = file.path(project_dir, "repbox")
   steps.dir = file.path(project_dir, "steps")
   just_extract_code_file = file.path(steps.dir, "NOTE_JUST_EXRACTED_CODE")
-  if (!just_extract_code) {
-    unzip(sup_zip, exdir = org.dir,setTimes = TRUE)
-    if (file.exists(just_extract_code_file)) file.remove(just_extract_code_file)
-    return(TRUE)
-  }
 
   # 1. Get all files in ZIP
   file_df = unzip(sup_zip, list = TRUE)
@@ -86,6 +85,12 @@ repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remov
   saveRDS(file_df, file.path(meta_dir, "sup_files.Rds"))
 
 
+  if (!just_extract_code) {
+    robust_unzip(sup_zip, exdir = org.dir)
+    if (file.exists(just_extract_code_file)) file.remove(just_extract_code_file)
+    note_problem_if_no_sub_files(project_dir, file_df = file_df)
+    return(TRUE)
+  }
   # 2. Unzip R and stata scripts files
   code_files = file_df$file_path[file_df$file_type %in% c("r","do","rmd","ado")]
   if (length(code_files)>0) {
@@ -93,6 +98,7 @@ repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remov
     # corrupted while command line unzip works
     #unzip(sup_zip,files = code_files,exdir = org.dir, unzip="unzip")
     robust_unzip(normalizePath(sup_zip), exdir=normalizePath(org.dir), files=code_files)
+    note_problem_if_no_sub_files(project_dir, file_df = file_df)
   } else {
     dir.create(org.dir)
   }
@@ -144,13 +150,26 @@ robust_unzip = function(zipfile, exdir, files=NULL, overwrite=TRUE, verbose=FALS
   }
 
   if (is.null(files)) {
-    cmd = paste0(cmd, '"', normalizePath(zipfile), '" -d "', normalizePath(exdir),'"')
+    cmd = paste0(cmd, '"', normalizePath(zipfile), '" -d "', normalizePath(exdir,mustWork = FALSE),'"')
   } else {
-    cmd = paste0(cmd,'"', normalizePath(zipfile), '" ', paste0('"',files,'"', collapse=" "), ' -d "', normalizePath(exdir),'"')
+    cmd = paste0(cmd,'"', normalizePath(zipfile), '" ', paste0('"',files,'"', collapse=" "), ' -d "', normalizePath(exdir,mustWork = FALSE),'"')
 
   }
   cat(cmd)
   system(cmd,ignore.stdout = !verbose)
   #rstudioapi::filesPaneNavigate(exdir)
 }
+
+
+note_problem_if_no_sub_files = function(project_dir, sup_dir=paste0(project_dir, "/org"),file_df) {
+  restore.point("note_problem_if_no_sub_files")
+  if (!missing(file_df)) {
+    if (NROW(file_df)==0) return()
+  }
+  files = list.files(sup_dir)
+  if (length(files)==0) {
+    repboxUtils::repbox_problem(type="zip_no_files", msg="We could not extract any files from the ZIP of the reproduction package. Possibly corrupted.",fail_action = "msg",project_dir = project_dir)
+  }
+}
+
 
