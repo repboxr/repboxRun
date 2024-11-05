@@ -23,6 +23,35 @@ We cannot deal with the chained operator `l2.s2` in `l2.s2.lCF`.
 We do not yet deal with time series prefixes like
 L(0/4).x1
 
+### Regressions like reg view_npausezone 1.disab#0.vid_late 1.disab#1.vid_late 1.vid_late
+
+The example is from aejapp_15_4_14 step 16:
+
+```
+. reg view_npausezone 1.disab#0.vid_late 1.disab#1.vid_late 1.vid_late
+
+Linear regression                               Number of obs     =        946
+                                                F(3, 942)         =       4.77
+                                                Prob > F          =     0.0026
+                                                R-squared         =     0.0139
+                                                Root MSE          =     .45322
+
+------------------------------------------------------------------------------
+             |               Robust
+view_npaus~e | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       disab#|
+    vid_late |
+        1 0  |   .0600738   .0457372     1.31   0.189    -.0296847    .1498323
+        1 1  |   .0522676   .0369846     1.41   0.158     -.020314    .1248493
+             |
+    vid_late |
+          1  |  -.0891529   .0381847    -2.33   0.020    -.1640898   -.0142159
+             |
+       _cons |   .2213115   .0301943     7.33   0.000     .1620556    .2805673
+------------------------------------------------------------------------------
+```
+
 ### Inline for loops
 
 aejpol_7_2_11:
