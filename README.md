@@ -61,3 +61,13 @@ xi: for var Dgender no_tickets no_ticketorder avevalue_tickets value_tickets pos
 
 The values `X` in the regression takes the values specified in the for statement before the :.
 It is unlikely, that we will successfully be able to parse regression results from such constructions, since we cannot inject code in an inline for loop.
+
+
+### We cannot manually download data
+
+Some reproduction packages have not included all data but instructions in the README, how the data can be obtained. For repbox this is equivalent to missing data, while a human replicator might well be able to reproduce the study.
+
+An example is `aejapp_1_1_5`. They write in the README:
+
+> The primary dataset used for this analysis is the American National Election Studies Cumulative Data File freely available for download at 
+> http://www.electionstudies.org/studypages/download/datacenter_all.htm.
