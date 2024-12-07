@@ -6,18 +6,23 @@ example = function() {
 
   artid = "aejpol_9_3_5"
   projects.dir = "~/repbox/projects_test"
-  projects.dir = "~/repbox/projects_gha"
+  #projects.dir = "~/repbox/projects_gha"
+
+  # Has strange HTML report
+  artid = "aejpol_7_3_6"
+  artid = "testsupp"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
-  Project_dir = paste0("~/repbox/projects_gha/",artid)
+  Project_dir = file.path(projects.dir,artid)
   steps = repbox_steps_from(file_info = TRUE)
   #steps = repbox_steps_from(reproduction = TRUE, map=TRUE, html = TRUE)
   #steps = repbox_steps_from(mr_base = TRUE)
-  #steps = repbox_steps_from(art=TRUE, static_code=FALSE)
+  steps = repbox_steps_from(html=TRUE)
   html_opts = repbox_html_opts(make_what = c("ejd","general"))
   #stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(map = TRUE,html=FALSE)
+  steps = repbox_steps_from(file_info = TRUE)
   options(warn=1)
   opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 10*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(Project_dir,lang="stata", steps=steps, opts=opts)
@@ -135,7 +140,9 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
     # Create file info from /org folder
     parcels$.files$org = make.project.files.info(project_dir,for.org=TRUE, for.mod = FALSE)$org
     # Save script content in Rds files in parcels
-    parcels = repbox_make_script_parcel(project_dir, parcels)
+    if (opts$make_script_parcel) {
+      parcels = repbox_make_script_parcel(project_dir, parcels)
+    }
     if ("stata" %in% lang) {
       cat("\n  Stata static code analysis...\n\n")
       parcels = repbox_stata_static_parcel(project_dir, parcels=parcels, opts=opts)
