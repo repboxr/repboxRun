@@ -1,16 +1,15 @@
 example = function() {
+
   library(repboxRun)
   library(repboxEJD)
   #artid = "ecta_84_2_6"
   #rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
 
-  artid = "aejpol_9_3_5"
+  artid = "jeea_12_6_2"
   projects.dir = "~/repbox/projects_test"
   #projects.dir = "~/repbox/projects_gha"
 
-  # Has strange HTML report
-  artid = "aejpol_7_3_6"
-  artid = "testsupp"
+  #artid = "testsupp"
   #repbox_init_ejd_project(artid=artid, projects.dir=projects.dir)
 
   Project_dir = file.path(projects.dir,artid)
@@ -22,7 +21,7 @@ example = function() {
   #stata_opts = repbox_stata_opts(timeout = 5*60, rerun.failed.included.do = FALSE)
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(map = TRUE,html=FALSE)
-  steps = repbox_steps_from(file_info = TRUE)
+  steps = repbox_steps_from(file_info = TRUE,art = TRUE,reproduction = FALSE)
   options(warn=1)
   opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 10*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(Project_dir,lang="stata", steps=steps, opts=opts)
