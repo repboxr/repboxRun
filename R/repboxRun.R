@@ -3,9 +3,10 @@ example = function() {
   library(repboxRun)
   library(repboxEJD)
   #artid = "ecta_84_2_6"
+  artid = ""
   #rstudioapi::filesPaneNavigate(paste0("~/repbox/projects_gha/",artid))
 
-  artid = "aeri_1_2_6"
+  artid = "aejmic_17_2_2"
   projects.dir = "~/repbox/projects_test"
 
   #artid = "testsupp"
