@@ -1,0 +1,9 @@
+R/expost_info.R
+R/file_utils.R
+R/init.R
+R/repboxRun.R
+R/restore_scripts.R
+R/run_opts.R
+R/slimify.R
+R/sup_info.R
+DESCRIPTION
