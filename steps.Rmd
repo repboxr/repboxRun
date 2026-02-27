@@ -55,8 +55,7 @@ The pipeline is controlled by the `steps` list (generated via `repbox_steps_from
 -   **Actions:**
 
     -   **Re-run:** It actually **runs the Stata code a second time** (or distinct parts of it) with `extract.reg.info = TRUE`.
-    -   **Interception:** Uses `repboxReg` (via `repboxStata`) to intercept regression commands and store the coefficients, standard errors, $N$, and $R^2$.
-    -   **DAP:** Updates the "Display Analysis Parcel" (`dap`) which organizes these results.
+    -   **DAP:** Updates the "Data Analysis Plan" (`dap`) which organizes these results.
 
 -   **Storage:** Saves `stata_reg` and `stata_scalar` parcels.
 

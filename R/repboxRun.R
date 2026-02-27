@@ -272,6 +272,14 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
   return(TRUE)
 }
 
+rb_log_step_start = function(rb, step) {
+  repbox_log_step_start(rb$project_dir, step, opts=rb$opts)
+}
+
+rb_log_step_end = function(rb, step) {
+  repbox_log_step_end(rb$project_dir, step)
+}
+
 repbox_log_step_start = function(project_dir, step, opts) {
   step.info.dir = file.path(project_dir,"steps")
   if (!dir.exists(step.info.dir)) dir.create(step.info.dir, recursive = TRUE)
