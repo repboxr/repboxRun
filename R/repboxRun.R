@@ -118,7 +118,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
   }
 
   parcels = repdb_load_parcels(project_dir,"sup", parcels)
-  sup_info = parcels$sup$sup
+  sup_info = parcels$sup
   if (!is.null(sup_info)) {
     if (isTRUE(!sup_info$has_r) & "r" %in% lang) {
       cat("\nNo R scripts found...\n")

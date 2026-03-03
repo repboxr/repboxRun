@@ -30,7 +30,7 @@ rb_update_file_info_parcel = function(rb, overwrite=FALSE, unzip_org=TRUE, assum
     }
     if (!is.empty(zip_file)) {
       rb = rb_load_parcels(rb, "file_info")
-      if (!rb_has_complete_org(rb=rb)) {
+      if (!rb_has_complete_org_dir(rb=rb)) {
         rb_extract_zip_to_org(project_dir,zip_file)
       }
     }
@@ -46,7 +46,7 @@ rb_update_file_info_parcel = function(rb, overwrite=FALSE, unzip_org=TRUE, assum
       mb = size / 1e6
     )
 
-  rb$parcels$file_info$file_info = file_df
+  rb$parcels$file_info = file_df
   repdb_save_parcels(rb$parcels["file_info"],dir = file.path(project_dir, "repdb"))
   rb$has_file_info = TRUE
   rb
@@ -55,7 +55,7 @@ rb_update_file_info_parcel = function(rb, overwrite=FALSE, unzip_org=TRUE, assum
 rb_update_script_type_parcel = function(rb, overwrite=FALSE) {
   restore.point("rb_update_script_type_parcel")
   rb = rb_ensure_parcel(rb, "file_info")
-  file_info = rb_table(rb, "file_info")
+  file_info = rb_parcel(rb, "file_info")
   code_ext = c("do","ado","r","mod","nb","py","m", "sas","prg", "ztt","c","java","cpp","js","f95","f90", "tsp","g","lng","gms","jl")
 
   df = file_info %>%
@@ -70,16 +70,12 @@ rb_update_script_type_parcel = function(rb, overwrite=FALSE) {
 rb_update_script_parcels = function(rb, overwrite=FALSE) {
   restore.point("rb_update_script_parcels")
   rb = rb_ensure_parcel(rb, "file_info")
-  file_info = rb_table(rb, "file_info")
+  file_info = rb_parcel(rb, "file_info")
 
   rb = rb_update_script_type_parcel(rb, overwrite=overwrite)
 
-
   project_dir = rb$project_dir
-  rb$has_r_script_parcel = repboxDB::repdb_has_parcel(project_dir, "r_script")
-  rb$has_stata_script_parcel = repboxDB::repdb_has_parcel(project_dir, "stata_script")
-
-  rb$parcels = repbox_make_script_parcels(project_dir,parcels=rb$parcels, file_info=file_info)
+  rb$parcels = repbox_make_script_parcels(project_dir,parcels=rb$parcels, file_info=file_info,overwrite = overwrite)
   rb
 }
 

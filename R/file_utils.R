@@ -11,7 +11,7 @@ rb_has_complete_mod_dir = function(rb,project_dir=rb$project_dir,...) {
 }
 
 # We use heuristics
-rb_has_complete_org_dir = function(rb, project_dir=rb$project_dir, zip_file=rb_get_sup_zip(project_dir), use_file_info=TRUE, file_info=rb_table(rb, "file_info"), org_dir = file.path(project_dir, "org")) {
+rb_has_complete_org_dir = function(rb, project_dir=rb$project_dir, zip_file=rb_get_sup_zip(project_dir), use_file_info=TRUE, file_info=rb_parcel(rb, "file_info"), org_dir = file.path(project_dir, "org")) {
   restore.point("rb_has_complete_org")
   file_info = NULL
   org_dir = file.path(project_dir, "org")
@@ -27,9 +27,10 @@ rb_has_complete_org_dir = function(rb, project_dir=rb$project_dir, zip_file=rb_g
   if (!is.null(file_info)) {
     return(all(basename(file_info$file_path) %in% basename(org_files)))
   } else if (!is.empty(zip_file)) {
-    restore.point("khfffhdkfhdf")
-    stop("Complete code here")
-    need_files = unzip(zip_file, list=TRUE)
+    need_files = unzip(zip_file, list=TRUE)$Name
+    need_ext = tolower(tools::file_ext(need_files))
+    need_files = need_files[!need_ext %in% c("", "zip","tar","gz","tar.gz") & ! startsWith(need_files,"__MACOSX")]
+    return(all(need_files %in% org_files))
   }
 
 }
@@ -135,11 +136,11 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
 }
 
 
-repbox_make_script_parcels = function(project_dir, parcels=list(), overwrite=FALSE, file_info=parcels$file_info$file_info) {
+repbox_make_script_parcels = function(project_dir, parcels=list(), overwrite=FALSE, file_info=parcels[["file_info"]]) {
   restore.point("repbox_parcel_script")
 
   if (!overwrite) {
-    if (any(repboxDB::repdb_has_parcel(project_dir, c("stata_file", "rb_script", "r_file", "r_script")))) {
+    if (any(repboxDB::repdb_has_parcel(project_dir, c("stata_file", "stata_source", "r_file", "r_source")))) {
       return(parcels)
     }
   }
@@ -182,10 +183,10 @@ repbox_make_script_parcels = function(project_dir, parcels=list(), overwrite=FAL
   r_df = script_df %>% filter(file_type == "r")
 
   new_parcels = list(
-    stata_file = list(script_file=do_df),
-    stata_source = list(script_source = do_df),
-    r_file = list(script_file = r_df),
-    r_source = list(script_source = r_df)
+    stata_file = do_df,
+    stata_source = do_df,
+    r_file = r_df,
+    r_source = r_df
   )
   repdb_save_parcels(new_parcels, dir = file.path(project_dir, "repdb") )
   return(repdb_add_parcels(parcels, new_parcels))

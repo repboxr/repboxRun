@@ -69,19 +69,23 @@ rb_ensure_parcel = function(rb, parcel_name,  parcels = rb$parcels) {
   rb
 }
 
-rb_save_parcel = function(rb, parcel_name, tab_name=parcel_name, dat, dir = file.path(rb$project_dir,"repdb"), check=FALSE) {
+rb_save_parcel = function(rb, parcel_name, dat, dir = file.path(rb$project_dir,"repdb"), check=FALSE) {
   if (!missing(dat)) {
-    parcel = list(dat=dat)
-    names(parcel) = tab_name
+    parcel = dat
     rb$parcels[[parcel_name]] = parcel
   } else {
     dat = NULL
   }
+
+
+
+
   restore.point("rb_save_parcel")
-  if (check & !repdb_has_spec(tab_name) & !is.null(dat)) {
-    repdb_make_spec_from_data(tab_name, dat)
+  if (check & !repdb_has_spec(parcel_name) & !is.null(dat)) {
+    repdb_make_spec_from_data(parcel_name, dat)
   }
-  if (!repdb_has_spec(tab_name)) {
+  if (!repdb_has_spec(parcel_name)) {
+    stop(paste0("No repboxDB spec for ", parcel_name))
     file = file.path(dir,paste0(parcel_name,".Rds"))
     saveRDS(rb$parcels[[parcel_name]], file)
   } else {
@@ -90,15 +94,8 @@ rb_save_parcel = function(rb, parcel_name, tab_name=parcel_name, dat, dir = file
   rb
 }
 
-rb_table = function(rb,parcel_name, tab_name=NA) {
-  parcel = rb$parcels[[parcel_name]]
-  if (!is.na(tab_name)) {
-    parcel[[tab_name]]
-  } else if (length(parcel)>0) {
-    parcel[[1]]
-  } else {
-    NULL
-  }
+rb_parcel = function(rb,parcel_name) {
+  rb$parcels[[parcel_name]]
 }
 
 rb_set_flag = function(rb,...) {
@@ -132,7 +129,7 @@ rb_has_r = function(rb) {
 
 rb_has_lang = function(rb, lang = c("stata","r")[1]) {
   rb=rb_load_parcels(rb, "script_type")
-  lang_df = rb_table(rb,"script_type")
+  lang_df = rb_parcel(rb,"script_type")
   if (is.null(lang_df)) return(FALSE)
   if (lang=="stata") {
     return("do" %in% lang_df$file_type)

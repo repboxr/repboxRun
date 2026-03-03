@@ -18,6 +18,8 @@ rb_update_static_code_analysis = function(rb, overwrite=FALSE, lang=c("stata","r
     parcels = repboxR::repbox_project_static_analyse_r(project_dir,parcels=parcels, opts=opts$r_opts)
     rb_log_step_end(rb, "static_code_r")
   }
+
+
   rb$parcels = parcels
   rb
 }

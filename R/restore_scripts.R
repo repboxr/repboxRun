@@ -8,7 +8,7 @@ example = function() {
 
 repbox_restore_scripts = function(project_dir, overwrite=FALSE) {
   parcels = repdb_load_parcels(project_dir, "stata_source")
-  script_df = parcels$stata_source$script_source
+  script_df = parcels[["stata_source"]]
   if (is.null(script_df) | NROW(script_df)==0) return(NULL)
   org_dir = file.path(project_dir, "org")
   i = 1
