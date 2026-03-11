@@ -1,3 +1,21 @@
+example = function() {
+  library(repboxRun)
+
+  # Should point to this project dir
+  project_dir = rb_get_project_dir("~/repbox/projects/test")
+
+  if (FALSE)
+    rstudioapi::filesPaneNavigate(project_dir)
+
+  rb = rb_new(project_dir)
+  rb = rb_update_file_info_parcel(rb, overwrite=!FALSE,assume_org_complete = TRUE)
+  rb = rb_update_script_parcels(rb, overwrite=!FALSE)
+  rb = rb_update_static_code_analysis(rb, overwrite = !FALSE)
+  rb = rb_run_stata_reproduction(rb, overwrite=!FALSE, store_reg_info=TRUE)
+  rb
+
+}
+
 rb_create_mod_dir = function(rb) {
   restore.point("rb_update_mod_dir")
   rb_require_complete_org_dir(rb)
@@ -63,16 +81,22 @@ rb_run_stata_reproduction = function(rb, overwrite = FALSE, create_mod_dir = TRU
   rb_remove_dir(rb=rb, sub_dir = "repbox/stata")
   dir.create(repbox_stata_dir)
 
-  res = repbox_project_run_stata(project_dir,opts=stata_opts)
-  parcels = rb$parcels
-  parcels = repbox_save_stata_run_parcels(project_dir, parcels)
+
+  parcels = repbox_project_run_stata(project_dir,opts=stata_opts,parcels = rb$parcels)
+  repbox_results=repbox_load_internal_repbox_results(project_dir)
+
+  parcels = repbox_save_stata_run_parcels(project_dir, parcels,repbox_results = repbox_results)
   parcels = make_parcel_stata_do_run_info(project_dir, parcels)
   if (store_reg_info) {
-    parcels = repbox_save_stata_reg_run_parcels(project_dir, parcels)
+    library(repboxStataReg)
+    parcels = rsr_make_reg_info(project_dir, overwrite=TRUE, parcels = parcels, repbox_results=repbox_results)
 
   }
 
   rb$parcels = parcels
+
+  # create direct replication format
+  rb$drf = repboxDRF::drf_create(project_dir,parcels = parcels, overwrite=TRUE)
   rb_log_step_end(rb, "stata_reproduction")
   rb
 }

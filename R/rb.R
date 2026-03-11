@@ -53,7 +53,7 @@ get_rb_opts = function() {
   rb_options()
 }
 
-rb_options = function(install_from = "local_ejd",stop.on.error = TRUE, stata_version = 17, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE,stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),r_opts = repbox_r_opts(), art_opts = repbox_art_opts(), map_opts=repbox_map_opts(), html_opts = repbox_html_opts(), problem_fail_action= if(stop.on.error) "error" else "msg", ...) {
+rb_options = function(install_from = "local_ejd",stop.on.error = TRUE, stata_version = 17, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE,stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),r_opts = repbox_r_opts(), problem_fail_action= if(stop.on.error) "error" else "msg", ...) {
   as.list(environment())
 }
 
@@ -107,14 +107,14 @@ rb_set_flag = function(rb,...) {
 rb_require_complete_org_dir = function(rb, msg=NULL) {
   restore.point("rb_require_complete_org_dir")
   if (is.null(msg)) msg=paste0("You need a complete org directory for ", rb$project_dir)
-  if (!rb_has_complete_org_dir(rb=rb)) {
+  if (isTRUE(!rb_has_complete_org_dir(rb=rb))) {
     stop(msg)
   }
 }
 
 rb_require_complete_mod_dir = function(rb, msg=NULL) {
   if (is.null(msg)) msg="You need a complete org directory"
-  if (!rb_has_complete_mod_dir(rb=rb)) {
+  if (isTRUE(!rb_has_complete_mod_dir(rb=rb))) {
     stop(msg)
   }
 }
