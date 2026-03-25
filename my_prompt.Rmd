@@ -1,10 +1,10 @@
 
-Below are relevant files from my R project.
+Below are relevant files from R projects / directory related to repboxbox
 
-DESCRIPTION
+# Package repboxRun
 
 
-# FILE: DESCRIPTION
+# FILE: /home/rstudio/repbox/repboxRun/DESCRIPTION
 ```
 Package: repboxRun
 Type: Package
@@ -14,21 +14,18 @@ Author: Sebastian Kranz (Ulm University)
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
 Description: Run repbox analyses 
 License: GPL >= 3.0
-Depends: dplyr, restorepoint,repboxArt, repboxRegmap, repboxMap repboxStata, repboxReg,
-         repboxDB, repboxCodeText, repboxHtml, repboxR, repboxDoc
+Depends: dplyr, restorepoint, repboxRegmap, repboxStata, repboxStataReg,
+         repboxDB, repboxCodeText, repboxR, repboxDoc, repboxDRF, metaregBase
 Encoding: UTF-8
 LazyData: true
 
 ```
-# END OF FILE: DESCRIPTION
+# END OF FILE: /home/rstudio/repbox/repboxRun/DESCRIPTION
 
 -----------------------------------------------------------
 
 
-# R code (project repboxRun)
-
-
-# FILE: expost_info.R
+# FILE: /home/rstudio/repbox/repboxRun/R/expost_info.R
 ```
 example = function() {
   parent_dir = "~/repbox/projects_static"
@@ -136,12 +133,12 @@ repbox_store_step_info = function(project_dir) {
 }
 
 ```
-# END OF FILE: expost_info.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/expost_info.R
 
 -----------------------------------------------------------
 
 
-# FILE: file_utils.R
+# FILE: /home/rstudio/repbox/repboxRun/R/file_utils.R
 ```
 remove.dir = function(dir.to.be.removed, recursive=TRUE, must.contain = "/projects") {
   if (!has.substr(dir.to.be.removed,must.contain)) {
@@ -149,6 +146,35 @@ remove.dir = function(dir.to.be.removed, recursive=TRUE, must.contain = "/projec
   }
   if (!dir.exists(dir.to.be.removed)) return()
   unlink(dir.to.be.removed,recursive = recursive)
+}
+
+rb_has_complete_mod_dir = function(rb,project_dir=rb$project_dir,...) {
+  rb_has_complete_org_dir(rb=rb, org_dir=file.path(project_dir, "mod"))
+}
+
+# We use heuristics
+rb_has_complete_org_dir = function(rb, project_dir=rb$project_dir, zip_file=rb_get_sup_zip(project_dir), use_file_info=TRUE, file_info=rb_parcel(rb, "file_info"), org_dir = file.path(project_dir, "org")) {
+  restore.point("rb_has_complete_org")
+  file_info = NULL
+  org_dir = file.path(project_dir, "org")
+  if (!dir.exists(org_dir)) return(FALSE)
+
+  if (use_file_info & is.null(file_info)) {
+    file_info = rb_get_file_info(project_dir)
+  }
+
+  if (is.null(file_info) & is.empty(zip_file)) return(NA)
+  org_files = list.files(file.path(project_dir, "org"), recursive = TRUE)
+  restore.point("khfhdkfhdf")
+  if (!is.null(file_info)) {
+    return(all(basename(file_info$file_path) %in% basename(org_files)))
+  } else if (!is.empty(zip_file)) {
+    need_files = unzip(zip_file, list=TRUE)$Name
+    need_ext = tolower(tools::file_ext(need_files))
+    need_files = need_files[!need_ext %in% c("", "zip","tar","gz","tar.gz") & ! startsWith(need_files,"__MACOSX")]
+    return(all(need_files %in% org_files))
+  }
+
 }
 
 
@@ -252,20 +278,28 @@ make.project.files.info = function(project_dir, for.org = TRUE, for.mod=TRUE) {
 }
 
 
-repbox_make_script_parcel = function(project_dir, parcels) {
+repbox_make_script_parcels = function(project_dir, parcels=list(), overwrite=FALSE, file_info=parcels[["file_info"]]) {
   restore.point("repbox_parcel_script")
-  org.fi = parcels$.files$org
 
-  script_df = org.fi %>%
-    mutate(file_type = tolower(ext)) %>%
+  if (!overwrite) {
+    if (any(repboxDB::repdb_has_parcel(project_dir, c("stata_file", "stata_source", "r_file", "r_source")))) {
+      return(parcels)
+    }
+  }
+
+  if (is.null(file_info)) {
+    stop("Please ensure that file_info parcel is loaded.")
+  }
+
+
+  script_df = file_info %>%
     filter(file_type %in% c("do","r")) %>%
-    arrange(file_type, file) %>%
+    arrange(file_type, file_path) %>%
     mutate(
       artid=basename(project_dir),
-      file_path=file,
-      file_name = basename(file),
+      file_name = basename(file_path),
       sup_dir = paste0(project_dir, "/org"),
-      long_path = paste0(sup_dir,"/", file),
+      long_path = paste0(sup_dir,"/", file_path),
       script_num = seq_len(n()),
       file_exists = file.exists(long_path),
       source_added = file_exists
@@ -290,14 +324,14 @@ repbox_make_script_parcel = function(project_dir, parcels) {
   do_df = script_df %>% filter(file_type=="do")
   r_df = script_df %>% filter(file_type == "r")
 
-  parcels = list(
-    stata_file = list(script_file=do_df),
-    stata_source = list(script_source = do_df),
-    r_file = list(script_file = r_df),
-    r_source = list(script_source = r_df)
+  new_parcels = list(
+    stata_file = do_df,
+    stata_source = do_df,
+    r_file = r_df,
+    r_source = r_df
   )
-  repdb_save_parcels(parcels, dir = file.path(project_dir, "repdb") )
-  return(parcels)
+  repdb_save_parcels(new_parcels, dir = file.path(project_dir, "repdb") )
+  return(repdb_add_parcels(parcels, new_parcels))
 }
 
 special_file_types = function() {
@@ -308,12 +342,12 @@ special_file_types = function() {
   ))
 }
 ```
-# END OF FILE: file_utils.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/file_utils.R
 
 -----------------------------------------------------------
 
 
-# FILE: init.R
+# FILE: /home/rstudio/repbox/repboxRun/R/init.R
 ```
 #' Call this function to initialize a new repbox project
 #'
@@ -491,12 +525,859 @@ note_problem_if_no_sub_files = function(project_dir, sup_dir=paste0(project_dir,
 
 
 ```
-# END OF FILE: init.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/init.R
 
 -----------------------------------------------------------
 
 
-# FILE: repboxRun.R
+# FILE: /home/rstudio/repbox/repboxRun/R/project_status.R
+```
+example = function() {
+  project_dir = "/home/rstudio/repbox/projects_gha_new/aejapp_1_2_4"
+  if (FALSE)
+    rstudioapi::filesPaneNavigate(project_dir)
+
+  status = repbox_project_status(project_dir)
+}
+
+# A central function to return the general status of a project,
+# i.e. which steps have been run (successful or not) and when
+# and which files are there
+repbox_project_status = function(project_dir, add_fp=FALSE, add_repdb = TRUE) {
+  restore.point("repbox_project_status")
+  # project status will be a data.frame
+  # the complete status shall consist of different rbs
+  rb_li = vector("list", 100)
+  rb_ind = 0
+  project_dir = normalizePath(project_dir)
+  fp = function(file) {
+    file = normalizePath(file,mustWork = FALSE)
+    ifelse(startsWith(file, project_dir), file, paste0(project_dir, "/", file))
+  }
+  has_file = function(...) {
+    file.exists(fp(...))
+  }
+  add_rb = function(rbid,has=if (!is.na(val)) TRUE else NA, timestamp = NA_POSIXct_,  val=NA_real_, mb=NA_real_, help="", warn="", ...) {
+    rb = data.frame(rbid,has, timestamp,val,mb, help, ...)
+    rb_ind <<- rb_ind +1
+    rb_li[[rb_ind]] <<- rb
+    rb
+  }
+
+
+  add_file_rb = function(rbid, file,mb = file.size(file) / 1e6, ...) {
+    file = fp(file)
+
+    add_rb(rbid, has = file.exists(file), timestamp=file.mtime(file),mb = mb, ...)
+  }
+  add_dir_rb = function(rbid, dir, first=FALSE,...) {
+    restore.point("add_dir_rb")
+    if (length(dir)==0) {
+      add_rb(rbid, has = FALSE, ...)
+      return()
+    }
+    if (first) dir = dir[1]
+    if (!startsWith(dir,"/") & ! startsWith(dir,"~"))
+      dir = file.path(project_dir, dir[1])
+    files = list.files(dir, recursive = TRUE)
+    if (length(files)==0) {
+      add_rb(rbid, has = FALSE, ...)
+      return()
+    }
+    timestamp = max(file.mtime(dir))
+    add_rb(rbid, has=TRUE, timestamp = timestamp, ...)
+  }
+
+
+  # meta information
+  add_file_rb("meta_art","meta/art_meta.Rds")
+  add_file_rb("meta_sup","meta/sup_meta.Rds")
+
+  # infos on supplement files
+  fi_status = project_org_files_status(project_dir)
+  add_rb("org_dir_complete", has = fi_status$org_dir_complete, mb = fi_status$org_dir_mb, val=fi_status$org_dir_num_files, help="Does /org contain all files of the reproduction package?")
+  add_rb("sup_file_info", has = fi_status$has_file_info, mb = fi_status$fi_mb, val=fi_status$fi_num_files, help="Originally stored info about the files in the reproduction package. mb is total size of unzipped supplement.")
+
+
+
+  # repboxDoc
+  library(repboxDoc)
+  doc_dirs = repboxDoc::repbox_doc_dirs(project_dir)
+  doc_types = repboxDoc::rdoc_type(doc_dirs)
+  doc_forms = repboxDoc::rdoc_form(doc_dirs)
+
+  has_doc_app = length(app_prefix)>0
+
+
+  add_rb("doc_art",has=any(doc_types == "art"))
+  add_rb("doc_app",has=any(doc_types != "art"))
+  add_dir_rb("doc_art_pdf",doc_dirs[doc_types == "art" & doc_forms=="pdf"])
+  add_dir_rb("doc_art_mocr",doc_dirs[doc_types == "art" & doc_forms=="mocr"])
+  add_dir_rb("doc_art_html",doc_dirs[doc_types == "art" & doc_forms=="html"])
+  add_dir_rb("doc_app_mocr",doc_dirs[doc_types != "art" & doc_forms=="mocr"])
+
+
+  # general repbox info
+  add_file_rb("stata_results","repbox/stata/repbox_results.Rds", help="Does file repbox/stata/repbox_results.Rds exist?")
+  add_dir_rb("stata_cmd_log","repbox/stata/cmd", help="Does any file in repbox/stata/cmd exist?")
+
+  # metareg base info
+  if (has_file("metareg/base")) {
+    add_dir_rb("mr_base_dir","metareg/base")
+
+    r_runtime = stata_runtime = NA_real_
+    if (has_file("metareg/base/runtimes.Rds")) {
+      rt = readRDS(fp("metareg/base/runtimes.Rds"))
+      r_runtime = rt$total$r_runtime
+      stata_runtime = rt$total$stata_runtime
+    }
+    add_rb("mr_base_r_runtime", val=r_runtime)
+    add_rb("mr_base_stata_runtime", val=stata_runtime)
+
+    num_infeasible_steps = length(list.files(fp("metareg/base/step_results"), glob2rx("infeasible*.Rds")))
+    num_reg_results = length(list.files(fp("metareg/base/step_results"), glob2rx("infeasible*.Rds")))
+
+    add_rb("mr_base_num_infeasible_steps", val=num_infeasible_steps)
+    add_rb("mr_base_num_reg_results", val=num_reg_results)
+  } else {
+    add_rb("mr_base_dir", has=FALSE)
+  }
+
+  # metareg DAP info
+  # if metareg/base exits, also a DAP should exist
+  if (has_file("metareg/dap/stata/dap.Rds")) {
+    add_file_rb("dap","metareg/dap/stata/dap.Rds")
+    cache_files = list.files(fp("metareg/dap/stata/cache"), glob2rx("*.dta"))
+    add_rb("dap_cache", has=length(cache_files)>0, mb=sum(file.size(cache_file) / 1e6), val=length(cache_files), help="MB and number of cached data sets in DAP for replications of regressions in Stata code." )
+
+    cache_files = list.files(fp("metareg/dap/stata/extra_cache"), glob2rx("*.dta"))
+    add_rb("dap_extra_cache", has=length(cache_files)>0, mb=sum(file.size(cache_files) / 1e6), val=length(cache_files), help="Extra cache files are generated if translated R code was not able to reproduce correct data sets for regressions. Ideally, we don't need them." )
+  } else {
+    add_rb("dap", has=FALSE)
+  }
+
+
+  # readme
+  add_rb("readme_dir",has=has_file("readme"))
+  add_file_rb("readme_ranks","readme/readme_ranks.Rds")
+  add_dir_rb("readme_txt","readme/txt")
+
+  # gha
+  if (has_file("gha/gha_status.txt")) {
+    add_rb("gha", has = TRUE, timestamp = file.mtime(fp("gha/gha_status.txt")), status=merge.lines(readLines(fp("gha/gha_status.txt"))),help="Was run on Github Actions")
+  } else {
+    add_rb("gha", has = FALSE, help="Was not run on Github Actions")
+  }
+
+  # reports
+  add_file_rb("report_do_tab","reports/do_tab.html")
+
+  # fp
+  if (add_fp) {
+    types = "art"
+    if (has_doc_app) type = c(types, "app")
+
+
+    for (type in types) {
+      library(FuzzyProduction)
+      app_types = setdiff(unique(doc_types),"art")
+
+      type = "art"
+      doc_type = type
+      if (type=="app") doc_type = app_types
+      fp_dir =paste0(fp("fp/prod_"),doc_type)
+      ver_dirs = FuzzyProduction::fp_all_ok_ver_dirs(fp_dir)
+      fp_df = FuzzyProduction::fp_ver_dir_to_ids(ver_dirs)
+
+      fp_df$timestamp = file.mtime(file.path(fp_df$ver_dir, "prod_df.Rds"))
+      p_df = fp_df %>%
+        group_by(prod_id) %>%
+        summarize(
+          timestamp = max(timestamp, na.rm=TRUE),
+          val = n()
+        )
+      if (NROW(p_df)>0) {
+        add_rb(paste0("fp_prod_", p_df$prod_id),has=TRUE, timestamp = p_df$timestamp, val=p_df$val, help="val: no. versions")
+      }
+      p_df = fp_df %>%
+        group_by(prod_id, proc_id) %>%
+        summarize(
+          timestamp = max(timestamp, na.rm=TRUE),
+          val = n()
+        )
+      if (NROW(p_df)>0) {
+        add_rb(paste0("fp_proc_",p_df$prod_id,"-", p_df$proc_id),has=TRUE, timestamp = p_df$timestamp, val=p_df$val, help="val: no. versions")
+      }
+    }
+  }
+
+
+  if (add_repdb) {
+    repdb_files = list.files(fp("repdb"),glob2rx("*.Rds"), full.names = TRUE)
+    timestamp = file.mtime(repdb_files)
+    parcel = basename(repdb_files) %>% tools::file_path_sans_ext()
+    add_rb(paste0("repdb_", parcel), has=TRUE, timestamp=timestamp, mb = file.size(repdb_files) / 1e6)
+  }
+
+
+  status = bind_rows(rb_li)
+}
+
+project_org_files_status = function(project_dir) {
+  restore.point("project_org_files_status")
+
+  fi_meta = read_rds_or_null(file.path(project_dir,"meta/sup_files.Rds"))
+  has_meta_fi = !is.null(fi_meta)
+
+  has_repbox_fi = file.exists(file.path(project_dir,"repbox/org_files.Rds"))
+  if (is.null(fi_meta)) {
+    fi_meta = read_rds_or_null(file.path(project_dir,"repbox/org_files.Rds"))
+  }
+  if (!has_col(fi_meta, "mb") & has_col(fi_meta,"size")) {
+    fi_meta$mb = fi_meta$size / 1e6
+  }
+
+  org_dir = file.path(project_dir,"org")
+  files = list.files(org_dir,recursive = TRUE,include.dirs = FALSE)
+  fi = as.data.frame(file.info(files))
+  rownames(fi) = NULL
+  fi$file = files
+  fi$base = basename(files)
+  fi$ext = tools::file_ext(files)
+
+  na_if_null = function(x) {
+    if (is.null(x)) return(NA)
+  }
+
+  res = data.frame(has_file_info = !is.null(fi_meta), fi_mb = sum(fi_meta$mb), fi_num_files = NROW(fi_meta), has_org_dir = dir.exists(org_dir), org_dir_mb = sum(fi_meta$size) /1e6, org_dir_num_files = NROW(fi), has_meta_fi = has_meta_fi, has_repbox_fi = has_repbox_fi)
+
+
+  if (is.null(fi_meta)) {
+    res$fi_mb =  res$fi_num_files = NA
+  }
+
+  res$org_dir_complete = case_when(
+    !has_org_dir ~ FALSE,
+    is.na(res$fi_num_files) | isTRUE(res$fi_num_files==0) ~ NA,
+    isTRUE(res$fi_num_files == res$org_dir_num_files) ~ TRUE,
+    TRUE ~ FALSE
+  )
+  res = res[unique(c("org_dir_complete", names(res)))]
+  res
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/project_status.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_docs.R
+```
+rb_update_docs = function(rb, overwrite=FALSE,init_docs=TRUE, process_docs=TRUE) {
+  restore.point("rb_update_docs")
+  project_dir = rb$project_dir
+
+  rb$has_docs = rb_has_docs(project_dir)
+  if (!overwrite & rb$has_docs) {
+    rb$are_all_docs_processed = rb_are_all_docs_processed(project_dir)
+    if (!process_docs | rb$are_all_docs_processed) {
+      return(rb)
+    }
+  }
+
+  if (init_docs) {
+    #library(repboxEJD)
+    repboxEJD::repbox_ejd_init_doc(project_dir = project_dir, overwrite=overwrite)
+  }
+
+  if (process_docs) {
+    library(repboxDoc)
+    repboxDoc::repbox_process_all_docs(project_dir, overwrite=overwrite)
+  }
+  rb$are_all_docs_processed = rb_are_all_docs_processed(project_dir)
+  rb
+}
+
+rb_are_all_docs_processed = function(project_dir) {
+  library(repboxDoc)
+  doc_dirs  =repboxDoc::repbox_doc_dirs(project_dir)
+  is_processed = sapply(doc_dirs, rdoc_is_processed)
+  all(is.true(is_processed))
+}
+
+rb_has_docs = function(project_dir) {
+  library(repboxDoc)
+  doc_dirs  =repboxDoc::repbox_doc_dirs(project_dir)
+  length(doc_dirs)>1
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_docs.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_file_info.R
+```
+rb_has_file_info = function(project_dir) {
+  repdb_has_parcel(project_dir, "file_info")
+}
+
+
+rb_update_file_info_parcel = function(rb, overwrite=FALSE, unzip_org=TRUE, assume_org_complete=FALSE, parcels=rb$parcels) {
+  restore.point("rb_update_file_info")
+  project_dir = rb$project_dir
+  rb$has_file_info = rb_has_file_info(project_dir)
+  if (!overwrite) {
+    if (rb$has_file_info) {
+      return(rb)
+    }
+  }
+
+  file = file.path(project_dir, "repbox","org_files.Rds")
+  file_df = NULL
+  if (file.exists(file) & !overwrite) {
+    file_df = readRDS(file)
+  } else if (!assume_org_complete & !unzip_org) {
+    cat("\nNo existing file info, no unzipping of supplement ZIP file and assume_org_complete=FALSE\n")
+    return(rb)
+  } else if (assume_org_complete) {
+  } else {
+    zip_file = rb_get_sup_zip(project_dir)
+    if (is_empty(zip_file) & !assume_org_complete) {
+      cat("\nNo existing file info, no supplement ZIP file and assume_org_complete=FALSE\n")
+      rb$has_file_info
+      return(rb)
+    }
+    if (!is.empty(zip_file)) {
+      rb = rb_load_parcels(rb, "file_info")
+      if (!rb_has_complete_org_dir(rb=rb)) {
+        rb_extract_zip_to_org(project_dir,zip_file)
+      }
+    }
+  }
+  if (is.null(file_df)) {
+    file_df = make.project.files.info(project_dir,for.mod=FALSE)$org
+  }
+  file_df = file_df %>%
+    transmute(
+      file_path = file,
+      file_type = tolower(ext),
+      timestamp = mtime,
+      mb = size / 1e6
+    )
+
+  rb$parcels$file_info = file_df
+  repdb_save_parcels(rb$parcels["file_info"],dir = file.path(project_dir, "repdb"))
+  rb$has_file_info = TRUE
+  rb
+}
+
+rb_update_script_type_parcel = function(rb, overwrite=FALSE) {
+  restore.point("rb_update_script_type_parcel")
+  rb = rb_ensure_parcel(rb, "file_info")
+  file_info = rb_parcel(rb, "file_info")
+  code_ext = c("do","ado","r","mod","nb","py","m", "sas","prg", "ztt","c","java","cpp","js","f95","f90", "tsp","g","lng","gms","jl")
+
+  df = file_info %>%
+    filter(file_type %in% code_ext) %>%
+    group_by(file_type) %>%
+    summarize(num_files = n(), kb = sum(mb)*1000)
+
+  rb = rb_save_parcel(rb,"script_type",dat=df)
+  rb
+}
+
+rb_update_script_parcels = function(rb, overwrite=FALSE) {
+  restore.point("rb_update_script_parcels")
+  rb = rb_ensure_parcel(rb, "file_info")
+  file_info = rb_parcel(rb, "file_info")
+
+  rb = rb_update_script_type_parcel(rb, overwrite=overwrite)
+
+  project_dir = rb$project_dir
+  rb$parcels = repbox_make_script_parcels(project_dir,parcels=rb$parcels, file_info=file_info,overwrite = overwrite)
+  rb
+}
+
+rb_load_parcels = function(rb, parcel_names) {
+  rb$parcels = repdb_load_parcels(rb$project_dir, parcel_names, parcels = rb$parcels)
+  rb
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_file_info.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_meta.R
+```
+rb_update_meta = function(rb, overwrite=FALSE, opts=rb_options()) {
+  restore.point("rb_update_meta")
+  if (!rb_shall_perform_step(rb,"meta")) return(rb)
+
+  rb$has_meta = rb_has_meta(rb$project_dir)
+  if (!overwrite & rb$has_meta) return(rb)
+
+  project_dir = rb$project_dir
+  artid = basename(project_dir)
+
+  art = rb_load_ejd_art(artid, rb=rb)
+  rb$art = art
+
+  # Currently we can only implement from repboxEJD
+  #library(repboxEJD)
+  meta = repboxEJD::ejd_art_to_meta(art)
+  repboxEJD::save_art_sup_meta(meta=meta, project_dir=project_dir)
+
+  rb$meta = meta
+  rb$has_meta = rb_has_meta(rb$project_dir)
+  rb
+}
+
+rb_has_meta = function(project_dir) {
+  meta_dir = file.path(project_dir, "meta")
+
+  file.exists(file.path(meta_dir, "art_meta.Rds")) &
+    file.exists(file.path(meta_dir, "sup_meta.Rds"))
+}
+
+rb_load_meta = function(project_dir=rb$project_dir, rb=NULL) {
+  if (!is.null(rb$meta)) return(rb$meta)
+  meta_dir = file.path(project_dir, "meta")
+
+  meta = list(
+    art = read_rds_or_null(file.path(meta_dir, "art_meta.Rds")),
+    sup = read_rds_or_null(file.path(meta_dir, "sup_meta.Rds"))
+  )
+  meta
+}
+
+rb_load_ejd_art = function(artid,rb=NULL) {
+  if (!is.null(rb[["art"]])) return(rb$art)
+  arts = EconJournalScrap::ejs_load_agg("art.Rds")
+  arts[arts$artid==artid, ]
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_meta.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_mr_base.R
+```
+# Functions for 2nd reproduction run in Stata that extracts systematic
+# regression info and stores intermediate data sets for metareg replication
+
+repbox_reg_repro_opts = function(store_data_caches = TRUE) {
+  as.list(environment())
+}
+
+rb_has_mr_base = function(rb, project_dir = rb$project_dir) {
+  return(FALSE)
+  file.exists(file.path(project_dir, "repdb/stata_reg_run_info.Rds"))
+}
+
+
+rb_run_mr_base = function(rb, overwrite = FALSE) {
+  restore.point("rb_run_stata_reg_repro")
+  rb_log_step_start(rb, "stata_reg_repro")
+  project_dir = rb$project_dir
+
+  if (!rb_has_stata(rb)) {
+    cat("\nThe reproduction package has no Stata scripts.\n")
+    return(rb)
+  }
+
+  if (!rb_has_stata_reg_repro(rb)) {
+    cat("\nNo results for the required 2nd Stata reproduction run (reg_repro) found.\n")
+    return(rb)
+  }
+
+  if (!overwrite) {
+    if (rb_has_mr_base(rb)) {
+      cat("\nBase Metareg (mr_base) results already exist. Thus skipped.\n")
+      return(rb)
+    }
+  }
+
+  cat("\nBase Metareg\n")
+  rb_log_step_start(rb, "mr_base")
+  opts = rb$opts
+  res = mr_base_run_study(project_dir, stop.on.error = opts$stop.on.error,create.repdb = TRUE,stata_version = opts$stata_version)
+  rb_log_step_end(rb, "mr_base")
+
+
+
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_mr_base.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb.R
+```
+
+# Can be made a bit more sophisticated later
+rb_get_project_dir = function(project_dir) {
+  return(project_dir)
+}
+
+rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing=TRUE, parent_env = parent.frame(), fail_action="error") {
+  restore.point("rb_make_rb")
+
+  if (!dir.exists(project_dir))
+    stop(paste0("project_dir=", as.character(project_dir), " does not exist. You must manually create it."))
+
+  if (copy_existing) {
+    old_rb = parent_env$rb
+    if (isTRUE(old_rb$project_dir==project_dir)) {
+      rb = old_rb
+      rb$just_steps = just_steps
+      rb$ignore_steps = ignore_steps
+      rb$fail_action = fail_action
+      rb_set_problem_opts(rb)
+      return(old_rb)
+    }
+  }
+
+  rb = list(
+    project_dir = project_dir,
+    just_steps = just_steps,
+    ignore_steps = ignore_steps,
+    parcels = list(),
+    opts =  rb_options(),
+    fail_action = fail_action
+  )
+  rb_set_problem_opts(rb)
+  rb
+}
+
+rb_set_problem_opts = function(rb) {
+  repbox_set_problem_options(rb$project_dir,fail_action = rb$fail_action)
+  invisible(rb)
+}
+
+rb_shall_perform_step = function(rb, step) {
+  if (step %in% rb$ignore_steps) return(FALSE)
+  if (!is.null(rb$just_steps)) {
+    if (!step %in% rb$just_steps) return(FALSE)
+  }
+  return(TRUE)
+}
+
+
+
+get_rb_opts = function() {
+  rb_options()
+}
+
+rb_options = function(install_from = "local_ejd",stop.on.error = TRUE, stata_version = 17, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE,stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout),r_opts = repbox_r_opts(), problem_fail_action= if(stop.on.error) "error" else "msg", ...) {
+  as.list(environment())
+}
+
+rb_ensure_parcel = function(rb, parcel_name,  parcels = rb$parcels) {
+  restore.point("rb_ensure_parcel")
+  if (is.null(rb$parcels)) stop("rb$parcels is NULL. Did you correctly initiate rb?")
+  rb$parcels = repdb_load_parcels(rb$project_dir,parcel_names = parcel_name, parcels = rb$parcels)
+  is.null = sapply(rb$parcels[parcel_name], is.null)
+  null_names = names(is.null[is.null])
+  if (length(null_names)) {
+    stop(paste0("Parcels ", paste0(null_names, collapse=", "), " have not yet been generated."))
+  }
+  rb
+}
+
+rb_save_parcel = function(rb, parcel_name, dat, dir = file.path(rb$project_dir,"repdb"), check=FALSE) {
+  if (!missing(dat)) {
+    parcel = dat
+    rb$parcels[[parcel_name]] = parcel
+  } else {
+    dat = NULL
+  }
+
+
+
+
+  restore.point("rb_save_parcel")
+  if (check & !repdb_has_spec(parcel_name) & !is.null(dat)) {
+    repdb_make_spec_from_data(parcel_name, dat)
+  }
+  if (!repdb_has_spec(parcel_name)) {
+    stop(paste0("No repboxDB spec for ", parcel_name))
+    file = file.path(dir,paste0(parcel_name,".Rds"))
+    saveRDS(rb$parcels[[parcel_name]], file)
+  } else {
+    repdb_save_parcels(rb$parcels[parcel_name],dir=dir,check = check)
+  }
+  rb
+}
+
+rb_parcel = function(rb,parcel_name) {
+  rb$parcels[[parcel_name]]
+}
+
+rb_set_flag = function(rb,...) {
+  flags = list(...)
+  rb[names(flags)] = flags
+  rb
+}
+
+rb_require_complete_org_dir = function(rb, msg=NULL) {
+  restore.point("rb_require_complete_org_dir")
+  if (is.null(msg)) msg=paste0("You need a complete org directory for ", rb$project_dir)
+  if (isTRUE(!rb_has_complete_org_dir(rb=rb))) {
+    stop(msg)
+  }
+}
+
+rb_require_complete_mod_dir = function(rb, msg=NULL) {
+  if (is.null(msg)) msg="You need a complete org directory"
+  if (isTRUE(!rb_has_complete_mod_dir(rb=rb))) {
+    stop(msg)
+  }
+}
+
+rb_has_stata = function(rb) {
+  rb_has_lang(rb, "stata")
+}
+
+rb_has_r = function(rb) {
+  rb_has_lang(rb, "r")
+}
+
+rb_has_lang = function(rb, lang = c("stata","r")[1]) {
+  rb=rb_load_parcels(rb, "script_type")
+  lang_df = rb_parcel(rb,"script_type")
+  if (is.null(lang_df)) return(FALSE)
+  if (lang=="stata") {
+    return("do" %in% lang_df$file_type)
+  } else {
+    return(lang %in% lang_df$file_type)
+  }
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_reproduction.R
+```
+example = function() {
+  library(repboxRun)
+
+  # Should point to this project dir
+  project_dir = rb_get_project_dir("~/repbox/projects/test")
+
+  if (FALSE)
+    rstudioapi::filesPaneNavigate(project_dir)
+
+  rb = rb_new(project_dir)
+  rb = rb_update_file_info_parcel(rb, overwrite=!FALSE,assume_org_complete = TRUE)
+  rb = rb_update_script_parcels(rb, overwrite=!FALSE)
+  rb = rb_update_static_code_analysis(rb, overwrite = !FALSE)
+  rb = rb_run_stata_reproduction(rb, overwrite=!FALSE, store_reg_info=TRUE)
+  rb
+
+}
+
+rb_create_mod_dir = function(rb) {
+  restore.point("rb_update_mod_dir")
+  rb_require_complete_org_dir(rb)
+
+  project_dir = rb$project_dir
+  if (is.null(project_dir)) stop("No project_dir")
+
+  mod_dir = file.path(project_dir, "mod")
+  org_dir = file.path(project_dir, "org")
+  if (dir.exists(mod_dir))
+    remove.dir(mod_dir,must.contain = project_dir)
+
+
+  # Keep file dates so that we can better
+  # see which files are overwritten when comparing
+  # original to modified supplement
+
+  copy.dir(org_dir, mod_dir,copy.date=TRUE)
+  unzip.zips(mod_dir)
+  make.project.files.info(project_dir, for.mod = TRUE, for.org=TRUE)
+  rb
+}
+
+rb_slimify_org_dir = function(rb) {
+  slimify.org.dir(rb$project_dir)
+}
+
+rb_has_stata_reproduction = function(rb, project_dir=rb$project_dir) {
+  file.exists(file.path(project_dir, "repdb/stata_run_info.Rds"))
+}
+
+rb_run_stata_reproduction = function(rb, overwrite = FALSE, create_mod_dir = TRUE, stata_opts = repbox_stata_opts(extract.reg.info=store_reg_info, extract.scalar.vals = store_reg_info), store_reg_info=TRUE) {
+  restore.point("rb_run_stata_reproduction")
+
+  if (!rb_has_lang(rb, "stata")) {
+    cat("The reproduction package has no Stata scripts.")
+    return(rb)
+  }
+  if (!overwrite) {
+    if (rb_has_stata_reproduction(rb)) {
+      cat("\nState reproduction already exists. Thus skipped.")
+      return(rb)
+    }
+  }
+
+  if (create_mod_dir) {
+    rb = rb_create_mod_dir(rb)
+  }
+
+  rb_require_complete_mod_dir(rb)
+  project_dir = rb$project_dir
+  if (is.null(project_dir)) stop("No project_dir")
+  rb_log_step_start(rb, "stata_reproduction")
+
+  repbox_stata_dir = file.path(project_dir, "repbox/stata")
+
+  if (!overwrite & dir.exists(repbox_stata_dir)) {
+    return(rb)
+  }
+
+
+  # To do: Check overwrite
+  rb_remove_dir(rb=rb, sub_dir = "repbox/stata")
+  dir.create(repbox_stata_dir)
+
+
+  parcels = repbox_project_run_stata(project_dir,opts=stata_opts,parcels = rb$parcels)
+  repbox_results=repbox_load_internal_repbox_results(project_dir)
+
+  parcels = repbox_save_stata_run_parcels(project_dir, parcels,repbox_results = repbox_results)
+  parcels = make_parcel_stata_do_run_info(project_dir, parcels)
+  if (store_reg_info) {
+    library(repboxStataReg)
+    parcels = rsr_make_reg_info(project_dir, overwrite=TRUE, parcels = parcels, repbox_results=repbox_results)
+
+  }
+
+  rb$parcels = parcels
+
+  # create direct replication format
+  rb$drf = repboxDRF::drf_create(project_dir,parcels = parcels, overwrite=TRUE)
+  rb_log_step_end(rb, "stata_reproduction")
+  rb
+}
+
+
+rb_run_r_reproduction = function(rb, overwrite = FALSE, r_opts = repbox_r_opts()) {
+  restore.point("rb_run_r_reproduction")
+  rb_require_complete_mod_dir(rb)
+  project_dir = rb$project_dir
+  if (is.null(project_dir)) stop("No project_dir")
+  rb_log_step_start(rb, "r_reproduction")
+
+  parcels = rb$parcels
+  parcels = repbox_project_run_r(project_dir, opts=opts$r_opts,parcels = parcels)
+  parcels = repbox_project_extract_r_results(project_dir, parcels, opts=opts$r_opts)
+  rb_log_step_end(rb, "r_reproduction")
+
+  rb$parcels = parcels
+  rb
+}
+
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_reproduction.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_static_code.R
+```
+rb_update_static_code_analysis = function(rb, overwrite=FALSE, lang=c("stata","r"), opts=rb$opts) {
+  restore.point("rb_update_static_code_analysis")
+
+  project_dir = rb$project_dir
+  parcels = rb$parcels
+
+  if ("stata" %in% lang & (overwrite | !rb_has_static_code_analysis(rb,"stata"))) {
+    rb_log_step_start(rb, "static_code_stata")
+    cat("\n  Stata static code analysis...\n\n")
+    parcels = repbox_stata_static_parcel(project_dir, parcels=parcels, opts=opts)
+    parcels = repboxCodeText::code_project_find_refs(project_dir, parcels=parcels)
+
+    rb_log_step_end(rb, "static_code_stata")
+  }
+  if ("r" %in% lang & (overwrite | !rb_has_static_code_analysis(rb,"r"))) {
+    rb_log_step_start(rb, "static_code_r")
+    cat("\n  R static code analysis...\n\n")
+    parcels = repboxR::repbox_project_static_analyse_r(project_dir,parcels=parcels, opts=opts$r_opts)
+    rb_log_step_end(rb, "static_code_r")
+  }
+
+
+  rb$parcels = parcels
+  rb
+}
+
+rb_has_static_code_analysis = function(rb, lang="stata", project_dir=rb$project_dir) {
+
+  if (lang=="stata") {
+    return(file.exists(file.path(project_dir, "repdb/stata_cmd.Rds")))
+  } else if (lang=="r") {
+    return(file.exists(file.path(project_dir, "repdb/r_cmd.Rds")))
+  }
+  stop(paste0("unknown language lang=", lang))
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_static_code.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_sup_zip.R
+```
+rb_get_file_info = function(project_dir) {
+  parcel = read_rds_or_null(file.path(project_dir, "repdb/file_info.Rds"))
+  parcel$file_info
+}
+
+rb_has_sup_zip = function(project_dir) {
+  !is.empty(rb_find_zip_file(project_dir))
+}
+
+rb_get_sup_zip = function(project_dir) {
+  artid = basename(project_dir)
+  repboxEJD::ejd_find_downloaded_sup_zip(artid=artid)
+}
+
+rb_extract_zip_to_org = function(project_dir, zip_file=rb_get_sup_zip(project_dir), ...) {
+  restore.point("rb_extract_zip_file")
+  if (is.empty(zip_file)) return()
+  repbox_sup_extract_zip(project_dir,sup_zip = zip_file,just_extract_code = FALSE)
+}
+
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_sup_zip.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_tools.R
+```
+rb_remove_dir = function(rb,sub_dir = NULL, project_dir=rb$project_dir ) {
+  if (is.null(project_dir)) stop()
+  if (is.null(sub_dir)) stop()
+
+  rem_dir = file.path(project_dir, sub_dir)
+  if (!dir.exists(rem_dir)) return()
+  remove.dir(rem_dir,must.contain = project_dir)
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_tools.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/repboxRun.R
 ```
 example = function() {
 
@@ -618,7 +1499,7 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
   }
 
   parcels = repdb_load_parcels(project_dir,"sup", parcels)
-  sup_info = parcels$sup$sup
+  sup_info = parcels$sup
   if (!is.null(sup_info)) {
     if (isTRUE(!sup_info$has_r) & "r" %in% lang) {
       cat("\nNo R scripts found...\n")
@@ -772,6 +1653,14 @@ repbox_run_project = function(project_dir, lang = c("stata","r"), steps = repbox
   return(TRUE)
 }
 
+rb_log_step_start = function(rb, step) {
+  repbox_log_step_start(rb$project_dir, step, opts=rb$opts)
+}
+
+rb_log_step_end = function(rb, step) {
+  repbox_log_step_end(rb$project_dir, step)
+}
+
 repbox_log_step_start = function(project_dir, step, opts) {
   step.info.dir = file.path(project_dir,"steps")
   if (!dir.exists(step.info.dir)) dir.create(step.info.dir, recursive = TRUE)
@@ -809,12 +1698,12 @@ example_update_step = function() {
   rstudioapi::filesPaneNavigate(project_dir)
 }
 ```
-# END OF FILE: repboxRun.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/repboxRun.R
 
 -----------------------------------------------------------
 
 
-# FILE: restore_scripts.R
+# FILE: /home/rstudio/repbox/repboxRun/R/restore_scripts.R
 ```
 # Restores scripts stored in repdb in case the org folder is deleted
 # Allows to re-run static code analysis in case parsing has been changeds
@@ -826,7 +1715,7 @@ example = function() {
 
 repbox_restore_scripts = function(project_dir, overwrite=FALSE) {
   parcels = repdb_load_parcels(project_dir, "stata_source")
-  script_df = parcels$stata_source$script_source
+  script_df = parcels[["stata_source"]]
   if (is.null(script_df) | NROW(script_df)==0) return(NULL)
   org_dir = file.path(project_dir, "org")
   i = 1
@@ -841,12 +1730,12 @@ repbox_restore_scripts = function(project_dir, overwrite=FALSE) {
   }
 }
 ```
-# END OF FILE: restore_scripts.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/restore_scripts.R
 
 -----------------------------------------------------------
 
 
-# FILE: run_opts.R
+# FILE: /home/rstudio/repbox/repboxRun/R/run_opts.R
 ```
 #' Returns all steps of a repbox analysis
 #'
@@ -886,12 +1775,12 @@ repbox_run_opts = function(stop.on.error = TRUE, stata_version = 17, slimify = F
   )
 }
 ```
-# END OF FILE: run_opts.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/run_opts.R
 
 -----------------------------------------------------------
 
 
-# FILE: slimify.R
+# FILE: /home/rstudio/repbox/repboxRun/R/slimify.R
 ```
 example = function() {
 
@@ -1105,12 +1994,12 @@ project.size.info = function(project_dir) {
   return(info)
 }
 ```
-# END OF FILE: slimify.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/slimify.R
 
 -----------------------------------------------------------
 
 
-# FILE: sup_info.R
+# FILE: /home/rstudio/repbox/repboxRun/R/sup_info.R
 ```
 sup_save_basic_info = function(project_dir, parcels=list()) {
   restore.point("sup_save_basic_info")
@@ -1167,81 +2056,241 @@ sup_save_basic_info = function(project_dir, parcels=list()) {
   parcels
 }
 ```
-# END OF FILE: sup_info.R
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/sup_info.R
 
 -----------------------------------------------------------
 
 
-# Github links to related packages that are loaded
-
-# General overview of repbox project
-https://github.com/repboxr
-
-# This package (Github link also includes some files not shown above)
-https://github.com/repboxr/repboxRun
-
-# Run Stata code and store log info
-https://github.com/repboxr/repboxStata
-
-# Static code analysis of Stata code
-https://github.com/repboxr/repboxCodeText
-
-# Rerun Stata code and store systematic regression results
-# in a a format for meta studies
-https://github.com/repboxr/repboxReg
-# Newer version in particular for meta studies some overlap with repboxReg
-https://github.com/repboxr/metaregTools
-
-# Analysis of reproduction packages that have R code (very preliminary)
-https://github.com/repboxr/repboxR
+# Package repboxGithub
 
 
-https://github.com/repboxr/repboxReadme
+# FILE: /home/rstudio/repbox/repboxGithub/DESCRIPTION
+```
+Package: repboxGithub
+Type: Package
+Title: Tools for Repbox and Github interaction
+Version: 0.1.0
+Author: Sebastian Kranz
+Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
+Description: Tools for Repbox and Github interaction
+License: GPL >= 3.0
+Depends: restorepoint, dplyr, GithubActions
+Encoding: UTF-8
+LazyData: true
+```
+# END OF FILE: /home/rstudio/repbox/repboxGithub/DESCRIPTION
 
-# Utility packages
-https://github.com/repboxr/repboxUtils
-https://github.com/repboxr/repboxDB
-
-
-# Making reports from repbox results
-https://github.com/repboxr/repboxHtml # old
-https://github.com/repboxr/repboxReport # new
-
-# Parsing information from article / appendix
-https://github.com/repboxr/repboxArt # old
-https://github.com/repboxr/repboxDoc # new
-
-# Mapping regressions between code and article
-https://github.com/repboxr/repboxMap # old
-
-https://github.com/repboxr/repboxAI # new AI approach
-https://github.com/repboxr/repboxRegmap # new complement to repboxAI
-
-# Tools to systematically deal with noisy information in form of tables
-# extracted from AI runs
-https://github.com/skranz/FuzzyProduction
+-----------------------------------------------------------
 
 
-# There can be other packages under
+# FILE: /home/rstudio/repbox/repboxGithub/R/7zip.R
+```
+# To install 7zip on Linux run
+# sudo apt-get install -y p7zip-full
 
-https://github.com/repboxr/
+example = function() {
+  setwd("~")
+  to.7z("~/temp", zip="~/test.7z", password="MyPassword")
+  extract.7z("~/temp2", zip="~/test.7z", password="MyPassword")
 
-or
+  setwd("~/repbox")
+  to.7z("repboxMain",zip = "~/repbox/repboxMain.7z", password = PKG_KEY)
+  to.7z("repboxStata",zip = "~/repbox/repboxStata.7z", password = PKG_KEY)
 
-https://github.com/skranz/
+}
 
-that are also used.
+to.7z = function(path, zip=paste0(basename(path),".7z"), password = NULL) {
+  restore.point("to.7z")
+  switch = ""
+  if (!is.null(password)) {
+    switch = paste0(" -p",password," ")
+  }
+  cmd = paste0('7z a ', zip, ' ', path,' ',  switch)
+  cat(cmd)
+  system(cmd)
+}
 
+extract.7z = function(path, zip=paste0(basename(path),".7z"), password = NULL) {
+  restore.point("extract.7z")
+  setwd(path)
+  switch = ""
+  if (!is.null(password)) {
+    switch = paste0(" -p",password," ")
+  }
+  cmd = paste0('7z x ', zip, ' -y ',  switch)
+  cat(cmd)
+  system(cmd,ignore.stdout = TRUE)
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxGithub/R/7zip.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxGithub/R/download_results.R
+```
+gha_repbox_download_results = function(repo, project_dir, password=NULL) {
+  restore.point("gha_repbox_download_results")
+  if (!dir.exists(project_dir))
+    stop(paste0("project_dir ", project_dir, " does not exist." ))
+
+  temp.dir = file.path(project_dir, "temp")
+  if (!dir.exists(temp.dir)) dir.create(temp.dir)
+  zip.file = file.path(temp.dir, "gha_results.zip")
+  gh_download_artifact(repo, destfile = zip.file)
+  unzip(zip.file, exdir = temp.dir)
+  z7.file = file.path(temp.dir, "results.7z")
+
+  extract.7z(project_dir, z7.file, password = password)
+  file.remove(zip.file)
+  file.remove(z7.file)
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxGithub/R/download_results.R
+
+-----------------------------------------------------------
+
+
+# Old Github repo where I ran Github Actions
+
+
+# FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/Dockerfile
+```
+FROM skranz/repbox_mono:dev
+
+ARG STATA_LIC
+
+RUN echo $STATA_LIC > /usr/local/stata/stata.lic
+
+COPY run_config.yml /root/run_config.yml
+COPY io_config.yml /root/io_config.yml
+
+
+MAINTAINER Sebastian Kranz "sebastian.kranz@uni-ulm.de"
+```
+# END OF FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/Dockerfile
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/io_config.yml
+```
+output:
+  encryption: true
+  encryption_mode: 7z
+  # all, reports, repdb
+  out_what: [reports, repdb]
+  
+sup:
+  # if download: false your supplement should be a ZIP
+  # file in the sup directory of this Github Repo
+  download: true
+  
+  encryption: true
+  encryption_mode: 7z
+  
+  download_script: download_sup.R
+  download_args:
+    url: https://econ.mathematik.uni-ulm.de/repbox_temp/temp_sup.7z
+    file_type: 7z
+    timeout_sec: 3600
+
+art:
+  # if download: false your supplement should be a ZIP, PDF or HTML
+  # file in the sup directory of this Github Repo
+  download: false
+  
+  encryption: true
+  encryption_mode: 7z
+  
+  download_script: download_art.R
+  download_args:
+    url: 
+    file_type: zip
+    timeout_sec: 120
+
+  
+```
+# END OF FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/io_config.yml
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/run_config.yml
+```
+# These options correspond to arguments to 
+# repbox_run_project
+lang: [r,stata]
+
+# If you only want to perform a subset of steps
+# in the repbox analysis, comment out the other steps
+steps:
+  - static_code
+  - art
+  - reproduction
+  - reg
+  - mr_base
+  - repbox_repdb
+  - map
+  - html
+
+# Options for the different steps
+# Unless an option is explicitly specified here
+# defaults will be used.
+#
+# See the corresponding documentations of
+#
+# repbox_art_opts, repbox_stata_opts, etc
+
+art_opts:
+
+stata_opts:
+
+r_opts:
+
+map_opts:
+
+html_opts:
+
+run_opts:
+  
+```
+# END OF FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/run_config.yml
+
+-----------------------------------------------------------
 
 
 ##################################
 # Your Task
 ##################################
 
-My repbox project is meanwhile fairly complex and older packages that will be deprecated and newer approaches currently coexist. The repboxRun package shall be the main entry point. I want to define different analysis steps that can be run for each project.
+I am currently revising the repbox pipeline.
 
-Scan the repboxRun code and the other packages with Github link above. Give an overview, of the overall state of the repbox project. What do packages do? What is already included and up-to-date in repboxRun? What should be changed?
- 
+The rb* functions and files in repboxRun are the new pipeline.
+
+In the new pipeline I want to run the original Stata code with
+the injections that store the data in intermediate files in
+the /repbox/stata folder on GithubActions.
+
+Yet, all other steps (docs, creating drf folder, repdb packages etc),
+shall be done later locally. There debugging is easier.
+
+The main reproduction run shall still be on GithubActions as it is nicely
+containered and I thus reduce the risk for my own computer.
+
+The github repo shown above still uses the old pipeline, it
+did run much more steps on Github Actions.
+
+Please look at the code and propose how to best implement
+my minimal Github action run with the new pipeline.
+
+I also need local copy functions that put stuff for Github actions to load
+on my server (e.g. only the original supplement ZIP).
+
+Make first a proposal, explain the steps, the needed concrete implementations.
+Don't code anything yet.
+
+
 
 
 
