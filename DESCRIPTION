@@ -1,7 +1,7 @@
 Package: repboxRun
 Type: Package
 Title: Run repbox analyses
-Version: 0.1
+Version: 0.2
 Author: Sebastian Kranz (Ulm University)
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
 Description: Run repbox analyses 
