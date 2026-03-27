@@ -5,6 +5,8 @@ R/init.R
 R/project_status.R
 R/rb_docs.R
 R/rb_file_info.R
+R/rb_gha.R
+R/rb_input_zip.R
 R/rb_meta.R
 R/rb_mr_base.R
 R/rb.R

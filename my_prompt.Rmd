@@ -9,13 +9,14 @@ Below are relevant files from R projects / directory related to repboxbox
 Package: repboxRun
 Type: Package
 Title: Run repbox analyses
-Version: 0.1
+Version: 0.2
 Author: Sebastian Kranz (Ulm University)
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
 Description: Run repbox analyses 
 License: GPL >= 3.0
-Depends: dplyr, restorepoint, repboxRegmap, repboxStata, repboxStataReg,
-         repboxDB, repboxCodeText, repboxR, repboxDoc, repboxDRF, metaregBase
+Depends: dplyr, restorepoint, repboxRegmap, repboxStata, repboxStataReg, stringi,
+         repboxDB, repboxCodeText, repboxR, repboxDoc, repboxDRF, metaregBase,
+         repboxUtils
 Encoding: UTF-8
 LazyData: true
 
@@ -909,6 +910,426 @@ rb_load_parcels = function(rb, parcel_names) {
 -----------------------------------------------------------
 
 
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_gha.R
+```
+rb_make_stata_run_manifest = function(project_dir, input_zip = NULL, extra = list()) {
+  restore.point("rb_make_stata_run_manifest")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+  artid = basename(project_dir)
+
+  repbox_results_file = file.path(project_dir, "repbox", "stata", "repbox_results.Rds")
+
+  manifest = list(
+    artid = artid,
+    created_at = Sys.time(),
+    project_dir = project_dir,
+    input_zip = if (!is.null(input_zip)) normalizePath(input_zip, mustWork = FALSE) else NA_character_,
+    input_zip_base = if (!is.null(input_zip)) basename(input_zip) else NA_character_,
+    input_zip_md5 = if (!is.null(input_zip) && file.exists(input_zip)) {
+      unname(tools::md5sum(input_zip))
+    } else {
+      NA_character_
+    },
+    repbox_results_exists = file.exists(repbox_results_file),
+    repbox_results_mtime = if (file.exists(repbox_results_file)) file.mtime(repbox_results_file) else as.POSIXct(NA),
+    github_repository = Sys.getenv("GITHUB_REPOSITORY", unset = NA_character_),
+    github_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+    github_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+    github_ref = Sys.getenv("GITHUB_REF", unset = NA_character_),
+    host = Sys.info()[["nodename"]]
+  )
+
+  if (length(extra) > 0) {
+    manifest = utils::modifyList(manifest, extra)
+  }
+  manifest
+}
+
+#' Write the raw Stata run manifest
+#'
+#' @export
+rb_write_stata_run_manifest = function(
+  project_dir,
+  input_zip = NULL,
+  extra = list(),
+  file = file.path(project_dir, "repbox", "stata", "stata_remote_manifest.Rds")
+) {
+  restore.point("rb_write_stata_run_manifest")
+
+  manifest = rb_make_stata_run_manifest(
+    project_dir = project_dir,
+    input_zip = input_zip,
+    extra = extra
+  )
+
+  dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(manifest, file)
+  invisible(file)
+}
+
+#' Read the raw Stata run manifest
+#'
+#' @export
+rb_read_stata_run_manifest = function(
+  project_dir = NULL,
+  file = if (!is.null(project_dir)) {
+    file.path(project_dir, "repbox", "stata", "stata_remote_manifest.Rds")
+  } else {
+    NULL
+  }
+) {
+  restore.point("rb_read_stata_run_manifest")
+
+  if (is.null(file) || !file.exists(file)) return(NULL)
+  readRDS(file)
+}
+
+rb_copy_tree = function(from, to, overwrite = TRUE) {
+  restore.point("rb_copy_tree")
+
+  if (!file.exists(from)) return(FALSE)
+
+  if ((file.exists(to) || dir.exists(to)) && overwrite) {
+    unlink(to, recursive = TRUE, force = TRUE)
+  }
+  if ((file.exists(to) || dir.exists(to)) && !overwrite) {
+    return(TRUE)
+  }
+
+  dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
+  ok = file.copy(
+    from = from,
+    to = to,
+    recursive = TRUE,
+    copy.mode = TRUE,
+    copy.date = TRUE,
+    overwrite = overwrite
+  )
+
+  if (!all(ok)) {
+    stop(paste0("Could not copy ", from, " to ", to, "."))
+  }
+  TRUE
+}
+
+rb_copy_dir_contents = function(from_dir, to_dir, overwrite = TRUE) {
+  restore.point("rb_copy_dir_contents")
+
+  if (!dir.exists(from_dir)) return(FALSE)
+
+  dir.create(to_dir, recursive = TRUE, showWarnings = FALSE)
+
+  rel = list.files(
+    from_dir,
+    recursive = TRUE,
+    full.names = FALSE,
+    include.dirs = TRUE,
+    all.files = TRUE,
+    no.. = TRUE
+  )
+
+  if (length(rel) == 0) {
+    return(TRUE)
+  }
+
+  full = file.path(from_dir, rel)
+  is_dir = dir.exists(full)
+
+  dir_rel = rel[is_dir]
+  if (length(dir_rel) > 0) {
+    dir_targets = file.path(to_dir, dir_rel)
+    invisible(vapply(
+      X = unique(dir_targets),
+      FUN = dir.create,
+      recursive = TRUE,
+      showWarnings = FALSE,
+      FUN.VALUE = logical(1)
+    ))
+  }
+
+  file_rel = rel[!is_dir]
+  if (length(file_rel) == 0) {
+    return(TRUE)
+  }
+
+  file_from = file.path(from_dir, file_rel)
+  file_to = file.path(to_dir, file_rel)
+
+  parent_dirs = unique(dirname(file_to))
+  invisible(vapply(
+    X = parent_dirs,
+    FUN = dir.create,
+    recursive = TRUE,
+    showWarnings = FALSE,
+    FUN.VALUE = logical(1)
+  ))
+
+  ok = file.copy(
+    from = file_from,
+    to = file_to,
+    overwrite = overwrite,
+    copy.mode = TRUE,
+    copy.date = TRUE
+  )
+
+  if (!all(ok)) {
+    stop(paste0("Could not copy all files from ", from_dir, " to ", to_dir, "."))
+  }
+  TRUE
+}
+
+#' Create a narrow Github Actions bundle for the raw Stata run
+#'
+#' The bundle contains only repbox/stata, steps, problems, and a copy
+#' of the raw run manifest at the bundle root.
+#'
+#' @export
+rb_make_gha_stata_bundle = function(
+  project_dir,
+  bundle_dir = file.path(project_dir, "gha_output", "bundle"),
+  overwrite = TRUE,
+  input_zip = NULL,
+  manifest_extra = list()
+) {
+  restore.point("rb_make_gha_stata_bundle")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+  if (!file.exists(file.path(project_dir, "repbox", "stata", "repbox_results.Rds"))) {
+    stop("No raw Stata results found in repbox/stata.")
+  }
+
+  manifest_file = rb_write_stata_run_manifest(
+    project_dir = project_dir,
+    input_zip = input_zip,
+    extra = manifest_extra
+  )
+
+  if (dir.exists(bundle_dir) && overwrite) {
+    unlink(bundle_dir, recursive = TRUE, force = TRUE)
+  }
+  dir.create(bundle_dir, recursive = TRUE, showWarnings = FALSE)
+
+  rb_copy_tree(
+    from = file.path(project_dir, "repbox", "stata"),
+    to = file.path(bundle_dir, "repbox", "stata"),
+    overwrite = TRUE
+  )
+
+  if (dir.exists(file.path(project_dir, "steps"))) {
+    rb_copy_tree(
+      from = file.path(project_dir, "steps"),
+      to = file.path(bundle_dir, "steps"),
+      overwrite = TRUE
+    )
+  }
+
+  if (dir.exists(file.path(project_dir, "problems"))) {
+    rb_copy_tree(
+      from = file.path(project_dir, "problems"),
+      to = file.path(bundle_dir, "problems"),
+      overwrite = TRUE
+    )
+  }
+
+  file.copy(
+    from = manifest_file,
+    to = file.path(bundle_dir, "stata_remote_manifest.Rds"),
+    overwrite = TRUE,
+    copy.mode = TRUE,
+    copy.date = TRUE
+  )
+
+  invisible(bundle_dir)
+}
+
+#' Import a raw Github Actions Stata bundle into a local project
+#'
+#' @export
+rb_import_gha_stata_bundle = function(
+  project_dir,
+  bundle_dir,
+  overwrite = TRUE,
+  verify = TRUE,
+  local_input_zip = NULL
+) {
+  restore.point("rb_import_gha_stata_bundle")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+  bundle_dir = normalizePath(bundle_dir, mustWork = TRUE)
+
+  manifest_file = file.path(bundle_dir, "stata_remote_manifest.Rds")
+  if (!file.exists(manifest_file)) {
+    manifest_file = file.path(bundle_dir, "repbox", "stata", "stata_remote_manifest.Rds")
+  }
+
+  manifest = NULL
+  if (file.exists(manifest_file)) {
+    manifest = readRDS(manifest_file)
+  }
+
+  if (verify && !is.null(manifest)) {
+    if (!is.na(manifest$artid) && !identical(as.character(manifest$artid), basename(project_dir))) {
+      stop("Bundle artid does not match the local project directory.")
+    }
+
+    if (!is.null(local_input_zip) && file.exists(local_input_zip) &&
+        !is.null(manifest$input_zip_md5) && !is.na(manifest$input_zip_md5)) {
+      local_md5 = unname(tools::md5sum(local_input_zip))
+      if (!identical(as.character(local_md5), as.character(manifest$input_zip_md5))) {
+        stop("Local supplement ZIP md5 does not match the imported bundle manifest.")
+      }
+    }
+  }
+
+  stata_from = file.path(bundle_dir, "repbox", "stata")
+  if (!dir.exists(stata_from)) {
+    stop("Bundle does not contain repbox/stata.")
+  }
+
+  rb_copy_tree(
+    from = stata_from,
+    to = file.path(project_dir, "repbox", "stata"),
+    overwrite = overwrite
+  )
+
+  steps_from = file.path(bundle_dir, "steps")
+  if (dir.exists(steps_from)) {
+    rb_copy_dir_contents(
+      from_dir = steps_from,
+      to_dir = file.path(project_dir, "steps"),
+      overwrite = overwrite
+    )
+  }
+
+  problems_from = file.path(bundle_dir, "problems")
+  if (dir.exists(problems_from)) {
+    rb_copy_dir_contents(
+      from_dir = problems_from,
+      to_dir = file.path(project_dir, "problems"),
+      overwrite = overwrite
+    )
+  }
+
+  invisible(list(
+    project_dir = project_dir,
+    bundle_dir = bundle_dir,
+    manifest = manifest
+  ))
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_gha.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/repboxRun/R/rb_input_zip.R
+```
+#' Create a ZIP file from the current org folder
+#'
+#' This is useful for Github Actions test runs if no original supplement
+#' ZIP file is available anymore, but the project still has a complete
+#' /org directory.
+#'
+#' @export
+rb_make_org_zip = function(
+  project_dir,
+  zip_file = file.path(project_dir, "rp_zip", paste0(basename(project_dir), "_org.zip")),
+  overwrite = FALSE,
+  org_dir = file.path(project_dir, "org")
+) {
+  restore.point("rb_make_org_zip")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+  org_dir = normalizePath(org_dir, mustWork = TRUE)
+
+  if (!dir.exists(org_dir)) {
+    stop("Cannot create supplement ZIP because the org directory does not exist.")
+  }
+
+  dir.create(dirname(zip_file), recursive = TRUE, showWarnings = FALSE)
+
+  if (file.exists(zip_file) && !overwrite) {
+    return(normalizePath(zip_file, mustWork = TRUE))
+  }
+  if (file.exists(zip_file) && overwrite) {
+    file.remove(zip_file)
+  }
+
+  oldwd = getwd()
+  on.exit(setwd(oldwd), add = TRUE)
+  setwd(org_dir)
+
+  files = list.files(
+    path = ".",
+    recursive = TRUE,
+    full.names = FALSE,
+    all.files = TRUE,
+    no.. = TRUE,
+    include.dirs = FALSE
+  )
+
+  if (length(files) == 0) {
+    stop("Cannot create supplement ZIP because the org directory is empty.")
+  }
+
+  utils::zip(
+    zipfile = zip_file,
+    files = files,
+    flags = "-9Xq"
+  )
+
+  normalizePath(zip_file, mustWork = TRUE)
+}
+
+#' Return an available supplement ZIP or create one from /org
+#'
+#' The function first checks an explicitly supplied ZIP file, then the
+#' repbox-side ZIP lookup, and finally can create a ZIP from /org.
+#'
+#' @export
+rb_ensure_sup_zip = function(
+  project_dir,
+  sup_zip = NULL,
+  zip_file = file.path(project_dir, "rp_zip", paste0(basename(project_dir), "_org.zip")),
+  overwrite = FALSE,
+  create_from_org = TRUE
+) {
+  restore.point("rb_ensure_sup_zip")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+
+  if (!is.null(sup_zip)) {
+    if (length(sup_zip) == 0 || is.na(sup_zip[1]) || !file.exists(sup_zip[1])) {
+      stop("The supplied sup_zip does not exist.")
+    }
+    return(normalizePath(sup_zip[1], mustWork = TRUE))
+  }
+
+  guessed_zip = try(rb_get_sup_zip(project_dir), silent = TRUE)
+  if (!inherits(guessed_zip, "try-error") &&
+      length(guessed_zip) > 0 &&
+      !is.na(guessed_zip[1]) &&
+      file.exists(guessed_zip[1])) {
+    return(normalizePath(guessed_zip[1], mustWork = TRUE))
+  }
+
+  if (!create_from_org) {
+    return(NULL)
+  }
+
+  rb_make_org_zip(
+    project_dir = project_dir,
+    zip_file = zip_file,
+    overwrite = overwrite
+  )
+}
+```
+# END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_input_zip.R
+
+-----------------------------------------------------------
+
+
 # FILE: /home/rstudio/repbox/repboxRun/R/rb_meta.R
 ```
 rb_update_meta = function(rb, overwrite=FALSE, opts=rb_options()) {
@@ -1167,19 +1588,35 @@ rb_has_lang = function(rb, lang = c("stata","r")[1]) {
 example = function() {
   library(repboxRun)
 
-  # Should point to this project dir
   project_dir = rb_get_project_dir("~/repbox/projects/test")
 
-  if (FALSE)
+  if (FALSE) {
     rstudioapi::filesPaneNavigate(project_dir)
+  }
 
   rb = rb_new(project_dir)
-  rb = rb_update_file_info_parcel(rb, overwrite=!FALSE,assume_org_complete = TRUE)
-  rb = rb_update_script_parcels(rb, overwrite=!FALSE)
-  rb = rb_update_static_code_analysis(rb, overwrite = !FALSE)
-  rb = rb_run_stata_reproduction(rb, overwrite=!FALSE, store_reg_info=TRUE)
-  rb
+  rb = rb_update_file_info_parcel(rb, overwrite = FALSE, assume_org_complete = TRUE)
+  rb = rb_update_script_parcels(rb, overwrite = FALSE)
+  rb = rb_update_static_code_analysis(rb, overwrite = FALSE)
 
+  rb = rb_run_stata_reproduction_raw(
+    rb = rb,
+    overwrite = FALSE,
+    create_mod_dir = TRUE,
+    capture_reg_info = TRUE,
+    capture_scalar_info = TRUE
+  )
+
+  rb = rb_postprocess_stata_reproduction(
+    rb = rb,
+    overwrite = FALSE,
+    build_run_info = TRUE,
+    build_do_run_info = TRUE,
+    build_reg_info = TRUE,
+    build_drf = TRUE
+  )
+
+  rb
 }
 
 rb_create_mod_dir = function(rb) {
@@ -1191,17 +1628,13 @@ rb_create_mod_dir = function(rb) {
 
   mod_dir = file.path(project_dir, "mod")
   org_dir = file.path(project_dir, "org")
-  if (dir.exists(mod_dir))
-    remove.dir(mod_dir,must.contain = project_dir)
+  if (dir.exists(mod_dir)) {
+    remove.dir(mod_dir, must.contain = project_dir)
+  }
 
-
-  # Keep file dates so that we can better
-  # see which files are overwritten when comparing
-  # original to modified supplement
-
-  copy.dir(org_dir, mod_dir,copy.date=TRUE)
+  copy.dir(org_dir, mod_dir, copy.date = TRUE)
   unzip.zips(mod_dir)
-  make.project.files.info(project_dir, for.mod = TRUE, for.org=TRUE)
+  make.project.files.info(project_dir, for.mod = TRUE, for.org = TRUE)
   rb
 }
 
@@ -1209,22 +1642,56 @@ rb_slimify_org_dir = function(rb) {
   slimify.org.dir(rb$project_dir)
 }
 
-rb_has_stata_reproduction = function(rb, project_dir=rb$project_dir) {
-  file.exists(file.path(project_dir, "repdb/stata_run_info.Rds"))
+rb_has_stata_raw_reproduction = function(rb, project_dir = rb$project_dir) {
+  file.exists(file.path(project_dir, "repbox", "stata", "repbox_results.Rds"))
 }
 
-rb_run_stata_reproduction = function(rb, overwrite = FALSE, create_mod_dir = TRUE, stata_opts = repbox_stata_opts(extract.reg.info=store_reg_info, extract.scalar.vals = store_reg_info), store_reg_info=TRUE) {
-  restore.point("rb_run_stata_reproduction")
+rb_has_stata_postprocess = function(rb, project_dir = rb$project_dir) {
+  file.exists(file.path(project_dir, "repdb", "stata_run_info.Rds"))
+}
+
+rb_has_stata_reproduction = function(rb, project_dir = rb$project_dir) {
+  rb_has_stata_postprocess(rb = rb, project_dir = project_dir)
+}
+
+#' Run the raw Stata reproduction only
+#'
+#' This function is designed for the remote Github Actions run.
+#' It executes the original Stata code with injections and stores the
+#' raw Stata outputs in /repbox/stata, but does not create local-only
+#' derivatives such as DRF or repdb postprocess outputs.
+#'
+#' @export
+rb_run_stata_reproduction_raw = function(
+  rb,
+  overwrite = FALSE,
+  create_mod_dir = TRUE,
+  capture_reg_info = TRUE,
+  capture_scalar_info = TRUE,
+  stata_opts = repbox_stata_opts(
+    extract.reg.info = capture_reg_info,
+    extract.scalar.vals = capture_scalar_info
+  ),
+  input_zip = NULL,
+  manifest_extra = list()
+) {
+  restore.point("rb_run_stata_reproduction_raw")
+
+  rb = rb_update_file_info_parcel(
+    rb = rb,
+    overwrite = FALSE,
+    assume_org_complete = TRUE
+  )
+  rb = rb_update_script_type_parcel(rb = rb, overwrite = FALSE)
 
   if (!rb_has_lang(rb, "stata")) {
     cat("The reproduction package has no Stata scripts.")
     return(rb)
   }
-  if (!overwrite) {
-    if (rb_has_stata_reproduction(rb)) {
-      cat("\nState reproduction already exists. Thus skipped.")
-      return(rb)
-    }
+
+  if (!overwrite && rb_has_stata_raw_reproduction(rb)) {
+    cat("\nRaw Stata reproduction already exists. Thus skipped.")
+    return(rb)
   }
 
   if (create_mod_dir) {
@@ -1234,56 +1701,182 @@ rb_run_stata_reproduction = function(rb, overwrite = FALSE, create_mod_dir = TRU
   rb_require_complete_mod_dir(rb)
   project_dir = rb$project_dir
   if (is.null(project_dir)) stop("No project_dir")
+
   rb_log_step_start(rb, "stata_reproduction")
 
-  repbox_stata_dir = file.path(project_dir, "repbox/stata")
-
-  if (!overwrite & dir.exists(repbox_stata_dir)) {
-    return(rb)
+  repbox_stata_dir = file.path(project_dir, "repbox", "stata")
+  if (dir.exists(repbox_stata_dir)) {
+    rb_remove_dir(rb = rb, sub_dir = "repbox/stata")
   }
+  dir.create(repbox_stata_dir, recursive = TRUE, showWarnings = FALSE)
 
+  stata_opts$extract.reg.info = isTRUE(capture_reg_info)
+  stata_opts$extract.scalar.vals = isTRUE(capture_scalar_info)
 
-  # To do: Check overwrite
-  rb_remove_dir(rb=rb, sub_dir = "repbox/stata")
-  dir.create(repbox_stata_dir)
-
-
-  parcels = repbox_project_run_stata(project_dir,opts=stata_opts,parcels = rb$parcels)
-  repbox_results=repbox_load_internal_repbox_results(project_dir)
-
-  parcels = repbox_save_stata_run_parcels(project_dir, parcels,repbox_results = repbox_results)
-  parcels = make_parcel_stata_do_run_info(project_dir, parcels)
-  if (store_reg_info) {
-    library(repboxStataReg)
-    parcels = rsr_make_reg_info(project_dir, overwrite=TRUE, parcels = parcels, repbox_results=repbox_results)
-
-  }
-
+  parcels = repbox_project_run_stata(
+    project_dir = project_dir,
+    opts = stata_opts,
+    parcels = rb$parcels
+  )
   rb$parcels = parcels
 
-  # create direct replication format
-  rb$drf = repboxDRF::drf_create(project_dir,parcels = parcels, overwrite=TRUE)
+  rb_write_stata_run_manifest(
+    project_dir = project_dir,
+    input_zip = input_zip,
+    extra = manifest_extra
+  )
+
   rb_log_step_end(rb, "stata_reproduction")
   rb
 }
 
+#' Postprocess a finished raw Stata reproduction
+#'
+#' This function is designed for the local machine after the raw
+#' Github Actions output has been imported into the project.
+#'
+#' @export
+rb_postprocess_stata_reproduction = function(
+  rb,
+  overwrite = FALSE,
+  build_run_info = TRUE,
+  build_do_run_info = TRUE,
+  build_reg_info = TRUE,
+  build_drf = TRUE
+) {
+  restore.point("rb_postprocess_stata_reproduction")
 
-rb_run_r_reproduction = function(rb, overwrite = FALSE, r_opts = repbox_r_opts()) {
-  restore.point("rb_run_r_reproduction")
-  rb_require_complete_mod_dir(rb)
   project_dir = rb$project_dir
   if (is.null(project_dir)) stop("No project_dir")
+
+  if (!rb_has_stata_raw_reproduction(rb)) {
+    stop("No raw Stata reproduction found in repbox/stata.")
+  }
+
+  if (!any(c(build_run_info, build_do_run_info, build_reg_info, build_drf))) {
+    return(rb)
+  }
+
+  rb_log_step_start(rb, "stata_postprocess")
+
+  repbox_results = repbox_load_internal_repbox_results(project_dir)
+  parcels = rb$parcels
+
+  if (build_run_info || build_do_run_info) {
+    parcels = repbox_save_stata_run_parcels(
+      project_dir = project_dir,
+      parcels = parcels,
+      repbox_results = repbox_results
+    )
+  }
+
+  if (build_do_run_info) {
+    parcels = make_parcel_stata_do_run_info(project_dir, parcels)
+  }
+
+  if (build_reg_info) {
+    library(repboxStataReg)
+    parcels = rsr_make_reg_info(
+      project_dir = project_dir,
+      overwrite = overwrite,
+      parcels = parcels,
+      repbox_results = repbox_results
+    )
+  }
+
+  rb$parcels = parcels
+
+  if (build_drf) {
+    rb$drf = repboxDRF::drf_create(
+      project_dir = project_dir,
+      parcels = parcels,
+      overwrite = overwrite
+    )
+  }
+
+  rb_log_step_end(rb, "stata_postprocess")
+  rb
+}
+
+rb_run_stata_reproduction = function(
+  rb,
+  overwrite = FALSE,
+  create_mod_dir = TRUE,
+  capture_reg_info = TRUE,
+  capture_scalar_info = TRUE,
+  build_run_info = TRUE,
+  build_do_run_info = TRUE,
+  build_reg_info = capture_reg_info,
+  build_drf = build_reg_info,
+  stata_opts = repbox_stata_opts(
+    extract.reg.info = capture_reg_info,
+    extract.scalar.vals = capture_scalar_info
+  ),
+  input_zip = NULL,
+  manifest_extra = list()
+) {
+  restore.point("rb_run_stata_reproduction")
+
+  if (!rb_has_lang(rb, "stata")) {
+    cat("The reproduction package has no Stata scripts.")
+    return(rb)
+  }
+
+  if (overwrite || !rb_has_stata_raw_reproduction(rb)) {
+    rb = rb_run_stata_reproduction_raw(
+      rb = rb,
+      overwrite = overwrite,
+      create_mod_dir = create_mod_dir,
+      capture_reg_info = capture_reg_info,
+      capture_scalar_info = capture_scalar_info,
+      stata_opts = stata_opts,
+      input_zip = input_zip,
+      manifest_extra = manifest_extra
+    )
+  } else {
+    cat("\nRaw Stata reproduction already exists. Raw run skipped.\n")
+  }
+
+  needs_postprocess = overwrite ||
+    !rb_has_stata_postprocess(rb) ||
+    isTRUE(build_do_run_info) ||
+    isTRUE(build_reg_info) ||
+    isTRUE(build_drf)
+
+  if (needs_postprocess) {
+    rb = rb_postprocess_stata_reproduction(
+      rb = rb,
+      overwrite = overwrite,
+      build_run_info = build_run_info,
+      build_do_run_info = build_do_run_info,
+      build_reg_info = build_reg_info,
+      build_drf = build_drf
+    )
+  } else {
+    cat("\nStata postprocess already exists. Postprocess skipped.\n")
+  }
+
+  rb
+}
+
+rb_run_r_reproduction = function(rb, overwrite = FALSE, r_opts = rb$opts$r_opts) {
+  restore.point("rb_run_r_reproduction")
+  rb_require_complete_mod_dir(rb)
+
+  project_dir = rb$project_dir
+  if (is.null(project_dir)) stop("No project_dir")
+
   rb_log_step_start(rb, "r_reproduction")
 
   parcels = rb$parcels
-  parcels = repbox_project_run_r(project_dir, opts=opts$r_opts,parcels = parcels)
-  parcels = repbox_project_extract_r_results(project_dir, parcels, opts=opts$r_opts)
+  parcels = repbox_project_run_r(project_dir, opts = r_opts, parcels = parcels)
+  parcels = repbox_project_extract_r_results(project_dir, parcels, opts = r_opts)
+
   rb_log_step_end(rb, "r_reproduction")
 
   rb$parcels = parcels
   rb
 }
-
 ```
 # END OF FILE: /home/rstudio/repbox/repboxRun/R/rb_reproduction.R
 
@@ -2074,7 +2667,7 @@ Author: Sebastian Kranz
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
 Description: Tools for Repbox and Github interaction
 License: GPL >= 3.0
-Depends: restorepoint, dplyr, GithubActions
+Depends: restorepoint, dplyr, GithubActions, stringi, repboxRun
 Encoding: UTF-8
 LazyData: true
 ```
@@ -2151,146 +2744,1539 @@ gha_repbox_download_results = function(repo, project_dir, password=NULL) {
 -----------------------------------------------------------
 
 
-# Old Github repo where I ran Github Actions
-
-
-# FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/Dockerfile
+# FILE: /home/rstudio/repbox/repboxGithub/R/gha_rp.R
 ```
-FROM skranz/repbox_mono:dev
+gha_rp_url_join = function(base_url, file_name) {
+  base_url = stringi::stri_replace_last_regex(base_url, "/+$", "")
+  file_name = stringi::stri_replace_first_regex(file_name, "^/+", "")
+  stringi::stri_paste(base_url, file_name, sep = "/")
+}
 
-ARG STATA_LIC
+#' Copy the original supplement ZIP to the server location used by gha_rp
+#'
+#' If no original ZIP is available, the function can create one from the
+#' current /org folder via repboxRun::rb_make_org_zip.
+#'
+#' @export
+gha_rp_stage_sup_zip = function(
+  project_dir,
+  server_dir,
+  sup_zip = NULL,
+  server_file_name = NULL,
+  url_base = NULL,
+  overwrite = TRUE,
+  create_zip_from_org = TRUE,
+  local_zip_file = file.path(project_dir, "rp_zip", paste0(basename(project_dir), "_org.zip")),
+  overwrite_local_zip = FALSE
+) {
+  restore.point("gha_rp_stage_sup_zip")
 
-RUN echo $STATA_LIC > /usr/local/stata/stata.lic
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
 
-COPY run_config.yml /root/run_config.yml
-COPY io_config.yml /root/io_config.yml
+  sup_zip = repboxRun:::rb_ensure_sup_zip(
+    project_dir = project_dir,
+    sup_zip = sup_zip,
+    zip_file = local_zip_file,
+    overwrite = overwrite_local_zip,
+    create_from_org = create_zip_from_org
+  )
 
+  if (is.null(sup_zip) || !file.exists(sup_zip)) {
+    stop("Could not determine a valid supplement ZIP file.")
+  }
+  sup_zip = normalizePath(sup_zip, mustWork = TRUE)
 
-MAINTAINER Sebastian Kranz "sebastian.kranz@uni-ulm.de"
+  artid = basename(project_dir)
+  safe_base = basename(sup_zip)
+  safe_base = stringi::stri_replace_all_regex(safe_base, "[^A-Za-z0-9._-]+", "_")
+
+  if (is.null(server_file_name)) {
+    server_file_name = "rp_gha.zip"
+  }
+
+  dir.create(server_dir, recursive = TRUE, showWarnings = FALSE)
+  server_file = file.path(server_dir, server_file_name)
+
+  ok = file.copy(
+    from = sup_zip,
+    to = server_file,
+    overwrite = overwrite,
+    copy.mode = TRUE,
+    copy.date = TRUE
+  )
+  cat(paste0("\nCopied reproduction package of ", artid, " to ", server_file,"\n"))
+  if (!isTRUE(ok)) {
+    stop("Could not copy the supplement ZIP to the server directory.")
+  }
+
+  res = list(
+    artid = artid,
+    sup_zip = sup_zip,
+    server_dir = normalizePath(server_dir, mustWork = FALSE),
+    server_file = normalizePath(server_file, mustWork = FALSE),
+    server_file_name = server_file_name,
+    size_mb = file.size(server_file) / 1e6,
+    md5 = unname(tools::md5sum(server_file))
+  )
+
+  if (!is.null(url_base)) {
+    res$url = gha_rp_url_join(url_base, server_file_name)
+  }
+
+  res
+}
+
+#' Write the run_config.R file used by the gha_rp Github Actions repo
+#'
+#' @export
+gha_rp_write_run_config = function(
+  repo_dir = "/home/rstudio/repbox/gha/gha_rp",
+  artid,
+  sup_url,
+  overwrite = TRUE,
+  timeout = 60 * 5,
+  create_mod_dir = TRUE,
+  capture_reg_info = TRUE,
+  capture_scalar_info = TRUE,
+  stop.on.error = TRUE,
+  work_dir = "gha_work",
+  output_dir = "gha_output/bundle",
+  artifact_name = "gha-rp-results"
+) {
+  restore.point("gha_rp_write_run_config")
+
+  dir.create(repo_dir, recursive = TRUE, showWarnings = FALSE)
+
+  cfg = list(
+    artid = artid,
+    sup_url = sup_url,
+    work_dir = work_dir,
+    output_dir = output_dir,
+    artifact_name = artifact_name,
+    overwrite = overwrite,
+    timeout = timeout,
+    create_mod_dir = create_mod_dir,
+    capture_reg_info = capture_reg_info,
+    capture_scalar_info = capture_scalar_info,
+    stop.on.error = stop.on.error
+  )
+
+  file = file.path(repo_dir, "run_config.R")
+  txt = c(
+    "# Generated by repboxGithub::gha_rp_write_run_config",
+    "gha_rp_run_config = ",
+    paste(capture.output(dput(cfg)), collapse = "\n")
+  )
+  writeLines(txt, file)
+
+  invisible(cfg)
+}
+
+#' Stage the supplement ZIP and refresh the gha_rp run_config.R
+#'
+#' @export
+gha_rp_prepare_repo = function(
+  project_dir,
+  server_dir,
+  url_base,
+  repo_dir = "/home/rstudio/repbox/gha/gha_rp",
+  sup_zip = NULL,
+  server_file_name = NULL,
+  overwrite = TRUE,
+  timeout = 60 * 5,
+  create_mod_dir = TRUE,
+  capture_reg_info = TRUE,
+  capture_scalar_info = TRUE,
+  stop.on.error = TRUE,
+  work_dir = "gha_work",
+  output_dir = "gha_output/bundle",
+  artifact_name = "gha-rp-results"
+) {
+  restore.point("gha_rp_prepare_repo")
+
+  staged = gha_rp_stage_sup_zip(
+    project_dir = project_dir,
+    server_dir = server_dir,
+    sup_zip = sup_zip,
+    server_file_name = server_file_name,
+    url_base = url_base,
+    overwrite = overwrite
+  )
+
+  cfg = gha_rp_write_run_config(
+    repo_dir = repo_dir,
+    artid = basename(project_dir),
+    sup_url = staged$url,
+    overwrite = overwrite,
+    timeout = timeout,
+    create_mod_dir = create_mod_dir,
+    capture_reg_info = capture_reg_info,
+    capture_scalar_info = capture_scalar_info,
+    stop.on.error = stop.on.error,
+    work_dir = work_dir,
+    output_dir = output_dir,
+    artifact_name = artifact_name
+  )
+
+  invisible(list(
+    staged_sup = staged,
+    run_config = cfg
+  ))
+}
+
+gha_rp_find_bundle_dir = function(root_dir) {
+  restore.point("gha_rp_find_bundle_dir")
+
+  files = list.files(
+    root_dir,
+    pattern = "repbox_results\\.Rds$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+
+  if (length(files) == 0) {
+    return(NULL)
+  }
+
+  stata_pat = paste0(
+    .Platform$file.sep, "repbox",
+    .Platform$file.sep, "stata",
+    .Platform$file.sep
+  )
+  keep = stringi::stri_detect_fixed(files, stata_pat)
+  files = files[keep]
+
+  if (length(files) == 0) {
+    return(NULL)
+  }
+
+  normalizePath(dirname(dirname(dirname(files[1]))), mustWork = TRUE)
+}
+
+#' Download the latest raw Stata artifact from gha_rp and import it locally
+#'
+#' @export
+gha_rp_download_stata_raw_results = function(
+  repo,
+  project_dir,
+  overwrite = TRUE,
+  verify = TRUE,
+  local_input_zip = NULL,
+  password = NULL
+) {
+  restore.point("gha_rp_download_stata_raw_results")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+
+  if (is.null(local_input_zip)) {
+    guessed_zip = try(repboxRun:::rb_get_sup_zip(project_dir), silent = TRUE)
+    if (!inherits(guessed_zip, "try-error") && length(guessed_zip) > 0 &&
+        !is.na(guessed_zip[1]) && file.exists(guessed_zip[1])) {
+      local_input_zip = guessed_zip[1]
+    }
+  }
+
+  temp_dir = file.path(project_dir, "temp", "gha_rp")
+  if (dir.exists(temp_dir)) {
+    unlink(temp_dir, recursive = TRUE, force = TRUE)
+  }
+  dir.create(temp_dir, recursive = TRUE, showWarnings = FALSE)
+
+  artifact_zip = file.path(temp_dir, "gha_rp_results.zip")
+  gh_download_artifact(repo, destfile = artifact_zip)
+  utils::unzip(artifact_zip, exdir = temp_dir)
+
+  z7_files = list.files(
+    temp_dir,
+    pattern = "\\.7z$",
+    recursive = TRUE,
+    full.names = TRUE,
+    ignore.case = TRUE
+  )
+
+  search_dir = temp_dir
+  if (length(z7_files) > 0) {
+    search_dir = file.path(temp_dir, "unz7")
+    dir.create(search_dir, recursive = TRUE, showWarnings = FALSE)
+    extract.7z(path = search_dir, zip = z7_files[1], password = password)
+  }
+
+  bundle_dir = gha_rp_find_bundle_dir(search_dir)
+  if (is.null(bundle_dir)) {
+    stop("Could not find a raw Stata bundle in the downloaded artifact.")
+  }
+
+  res = repboxRun:::rb_import_gha_stata_bundle(
+    project_dir = project_dir,
+    bundle_dir = bundle_dir,
+    overwrite = overwrite,
+    verify = verify,
+    local_input_zip = local_input_zip
+  )
+
+  invisible(res)
+}
 ```
-# END OF FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/Dockerfile
+# END OF FILE: /home/rstudio/repbox/repboxGithub/R/gha_rp.R
 
 -----------------------------------------------------------
 
 
-# FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/io_config.yml
-```
-output:
-  encryption: true
-  encryption_mode: 7z
-  # all, reports, repdb
-  out_what: [reports, repdb]
-  
-sup:
-  # if download: false your supplement should be a ZIP
-  # file in the sup directory of this Github Repo
-  download: true
-  
-  encryption: true
-  encryption_mode: 7z
-  
-  download_script: download_sup.R
-  download_args:
-    url: https://econ.mathematik.uni-ulm.de/repbox_temp/temp_sup.7z
-    file_type: 7z
-    timeout_sec: 3600
 
-art:
-  # if download: false your supplement should be a ZIP, PDF or HTML
-  # file in the sup directory of this Github Repo
-  download: false
-  
-  encryption: true
-  encryption_mode: 7z
-  
-  download_script: download_art.R
-  download_args:
-    url: 
-    file_type: zip
-    timeout_sec: 120
+# Github repo where Github Actions are run
 
-  
+
+# FILE: /home/rstudio/repbox/gha/gha_rp/run_config.R
 ```
-# END OF FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/io_config.yml
+# Generated by repboxGithub::gha_rp_write_run_config
+gha_rp_run_config = 
+list(artid = "gha_test", sup_url = "http://klein.mathematik.uni-ulm.de/repbox_temp/rp_gha.zip", 
+    work_dir = "gha_work", output_dir = "gha_output/bundle", 
+    artifact_name = "gha-rp-results", overwrite = TRUE, timeout = 600, 
+    create_mod_dir = TRUE, capture_reg_info = TRUE, capture_scalar_info = TRUE, 
+    stop.on.error = TRUE)
+```
+# END OF FILE: /home/rstudio/repbox/gha/gha_rp/run_config.R
 
 -----------------------------------------------------------
 
 
-# FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/run_config.yml
+# FILE: /home/rstudio/repbox/gha/gha_rp/run_minimal_stata_repro.R
 ```
-# These options correspond to arguments to 
-# repbox_run_project
-lang: [r,stata]
+library(repboxRun)
+options(warn = 1)
 
-# If you only want to perform a subset of steps
-# in the repbox analysis, comment out the other steps
-steps:
-  - static_code
-  - art
-  - reproduction
-  - reg
-  - mr_base
-  - repbox_repdb
-  - map
-  - html
+source("run_config.R", local = TRUE)
 
-# Options for the different steps
-# Unless an option is explicitly specified here
-# defaults will be used.
+if (!exists("gha_rp_run_config", inherits = FALSE)) {
+  stop("run_config.R must define gha_rp_run_config.")
+}
+
+cfg = gha_rp_run_config
+
+repo_dir = getwd()
+if (!startsWith(cfg$work_dir, "/")) {
+  cfg$work_dir = file.path(repo_dir, cfg$work_dir)
+}
+if (!startsWith(cfg$output_dir, "/")) {
+  cfg$output_dir = file.path(repo_dir, cfg$output_dir)
+}
+
+dir.create(cfg$work_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(cfg$output_dir, recursive = TRUE, showWarnings = FALSE)
+
+project_dir = file.path(cfg$work_dir, cfg$artid)
+input_dir = file.path(project_dir, "input")
+dir.create(input_dir, recursive = TRUE, showWarnings = FALSE)
+
+sup_zip = file.path(input_dir, basename(cfg$sup_url))
+
+message("Downloading supplement ZIP from ", cfg$sup_url)
+utils::download.file(
+  url = cfg$sup_url,
+  destfile = sup_zip,
+  mode = "wb",
+  quiet = FALSE
+)
+
+message("Initializing project in ", project_dir)
+repboxRun::repbox_init_project(
+  project_dir = project_dir,
+  sup_zip = sup_zip,
+  pdf_files = NULL,
+  html_files = NULL,
+  overwrite_org = TRUE,
+  just_extract_code = FALSE
+)
+
+rb = repboxRun:::rb_new(
+  project_dir = project_dir,
+  copy_existing = FALSE,
+  fail_action = if (isTRUE(cfg$stop.on.error)) "error" else "msg"
+)
+
+rb = repboxRun:::rb_update_file_info_parcel(
+  rb = rb,
+  overwrite = FALSE,
+  assume_org_complete = TRUE
+)
+
+rb = repboxRun:::rb_update_script_type_parcel(
+  rb = rb,
+  overwrite = FALSE
+)
+
+stata_opts = repboxStata::repbox_stata_opts(
+  timeout = cfg$timeout,
+  all.do.timeout = cfg$timeout,
+  extract.reg.info = isTRUE(cfg$capture_reg_info),
+  extract.scalar.vals = isTRUE(cfg$capture_scalar_info)
+)
+
+manifest_extra = list(
+  run_source = "gha_rp",
+  run_config = cfg
+)
+
+message("Running raw Stata reproduction")
+rb = repboxRun:::rb_run_stata_reproduction_raw(
+  rb = rb,
+  overwrite = isTRUE(cfg$overwrite),
+  create_mod_dir = isTRUE(cfg$create_mod_dir),
+  capture_reg_info = isTRUE(cfg$capture_reg_info),
+  capture_scalar_info = isTRUE(cfg$capture_scalar_info),
+  stata_opts = stata_opts,
+  input_zip = sup_zip,
+  manifest_extra = manifest_extra
+)
+
+message("Creating narrow Github Actions bundle")
+repboxRun:::rb_make_gha_stata_bundle(
+  project_dir = project_dir,
+  bundle_dir = cfg$output_dir,
+  overwrite = TRUE,
+  input_zip = sup_zip,
+  manifest_extra = manifest_extra
+)
+
+writeLines(
+  text = capture.output(sessionInfo()),
+  con = file.path(cfg$output_dir, "sessionInfo.txt")
+)
+
+message("Finished. Output bundle is in ", cfg$output_dir)
+```
+# END OF FILE: /home/rstudio/repbox/gha/gha_rp/run_minimal_stata_repro.R
+
+-----------------------------------------------------------
+
+
+
+# Package GithubActions
+
+
+# FILE: /home/rstudio/repbox/GithubActions/DESCRIPTION
+```
+Package: GithubActions
+Type: Package
+Title: Functions to facilitate use of Github Actions via R
+Version: 0.1.0
+Author: Sebastian Kranz
+Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
+Description: Work in progress. Not yet working well.
+License: GPL >= 2.0
+Depends: httr, curl, jsonlite, restorepoint
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+```
+# END OF FILE: /home/rstudio/repbox/GithubActions/DESCRIPTION
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/GithubActions/R/gh_api.R
+```
+
+#' Set personal access token by writing it into environment variables.
+#'
+#' @param pat A string containing the personal access token generated on Github.
+#'
+#' Not very secure. At some point I should use the approach of the gh package
+gh_set_pat = function(pat) {
+  # Used by these API functions
+  Sys.setenv(GITHUB_PAT = pat)
+
+  # Used by github cli
+  Sys.setenv(GITHUB_TOKEN = pat)
+
+}
+
+#' Get personal access token that was previously set b gh_set_pat.
+gh_pat = function() {
+  Sys.getenv("GITHUB_PAT")
+}
+
+#' Wait until a new Github action job has started
+gh_wait_until_new_run_starts = function(repo, old_runid, pause.sec = 1, timeout = 60, pat=gh_pat()) {
+  restore.point("gh_wait_until_new_run_starts")
+  start.time = Sys.time()
+
+  seconds_passed(start.time)
+
+  while(TRUE) {
+    runs = try(gh_list_runs(repo, pat), silent=TRUE)
+    if (is(runs, "try-error")) {
+      cat(paste0(Sys.time()," problem while getting list of runs:\n", paste0(as.character(run), collapse="\n"),"\nWill try again..."))
+      Sys.sleep(pause.sec)
+      next
+    }
+
+    if (NROW(runs)>0) {
+      if (is.null(old_runid)) {
+        return(runs$id[[1]])
+      }
+      if (runs$id[[1]] != old_runid) {
+        return(runs$id[[1]])
+      }
+    }
+    # timeout
+    if (seconds_passed(start.time) > timeout) {
+      return(NA)
+    }
+    Sys.sleep(pause.sec)
+  }
+
+}
+
+#' Wait until a new Github action job is completed
+gh_wait_until_run_completed = function(repo, runid, pause.sec = 1, timeout = 60*60*10, pat=gh_pat()) {
+  restore.point("gh_waint_until_run_completed")
+  start.time = Sys.time()
+
+  seconds_passed(start.time)
+
+  while(TRUE) {
+    run = try(gh_info_run(repo,runid, pat),silent = TRUE)
+    if (is(run, "try-error")) {
+      cat(paste0(Sys.time()," problem while retrieving status of GHA run:\n", paste0(as.character(run), collapse="\n"),"\nWill try again..."))
+      Sys.sleep(pause.sec)
+      next
+    }
+    if (is.null(run)) {
+      # Run with given id does not exist
+      return(NULL)
+    }
+    if (run$status == "completed") {
+      run$timeout = FALSE
+      return(run)
+    }
+    # timeout
+    if (seconds_passed(start.time) > timeout) {
+      run$timeout = TRUE
+      return(run)
+    }
+    Sys.sleep(pause.sec)
+  }
+}
+
+
+#' Show all jobs of a run. Some functions require the corresponding job id.
+gh_list_run_jobs = function(repo, runid, pat=gh_pat()) {
+  #https://api.github.com/repos/OWNER/REPO/actions/runs/RUN_ID/jobs
+  gh_get(paste0("repos/", repo,"/actions/runs/",runid,"/jobs"),pat)$jobs
+}
+
+#' Info about a workflow run.
+gh_info_run = function(repo, runid, pat = gh_pat()) {
+  #  https://api.github.com/repos/OWNER/REPO/actions/runs/RUN_ID
+  run = gh_get(paste0("repos/", repo,"/actions/runs/",runid),pat)
+  if (isTRUE(run$message == "Not Found")) {
+    cat("\nRun not found.\n")
+    return(NULL)
+  }
+  run
+}
+
+#' Get the id if the newest workflow run of a repo.
+gh_newest_runid = function(repo, pat = gh_pat()) {
+  runs = gh_list_runs(repo)
+  runs$id[[1]]
+}
+
+#' Return all workflow runs
+gh_list_runs = function(repo, pat=gh_pat()) {
+  #https://api.github.com/repos/OWNER/REPO/actions/runs
+  gh_get(paste0("repos/", repo,"/actions/runs"),pat)$workflow_runs
+
+}
+
+#' Return all workflows of the specified repo
+gh_list_workflows = function(repo, pat = gh_pat()) {
+  #https://api.github.com/repos/OWNER/REPO/actions/workflows
+  gh_get(paste0("repos/", repo,"/actions/workflows"),pat)$workflows
+}
+
+
+#' Trigger the specified workflow
+#'
+#' Only works if the workflow YAML file sets
+#'
+#' on:
+#'   workflow_dispatch:
+#'
+#' @param repo The repository name in format user/reponame.
+#' @param name The name of the workflow. If NULL use the first workflow
+#' @param branch The Github branch. By default "main"
+#' @param inputs Not yet tested. Potential input parameters passed to the workflow.
+#'
+gh_run_workflow = function(repo,name=NULL,branch="main", inputs=NULL, pat = gh_pat()) {
+  restore.point("gh_run_workflow")
+
+  workflows = gh_list_workflows(repo, pat)
+
+  if (NROW(workflows)==0) {
+    cat("\nNo workflow found.")
+    return(NULL)
+  }
+
+  row = 1
+  if (!is.null(name)) {
+    row = match(name, workflows$name)
+  }
+
+  wf_id = workflows$id[row]
+
+  values = list(ref=branch)
+  if (!is.null(inputs))
+    values$inputs = inputs
+  #https://api.github.com/repos/OWNER/REPO/actions/workflows/WORKFLOW_ID/dispatches \
+  res = gh_post(paste0("repos/", repo,"/actions/workflows/",wf_id,"/dispatches"),values=values, pat = pat)
+
+  res
+
+}
+
+
+#' Download an artifact generated by a finished job
+gh_download_artifact = function(repo, destfile, artifact_id = NULL, runid=NULL, pat = gh_pat(), use_curl=FALSE) {
+  restore.point("gh_download_artifact")
+
+  if (is.null(artifact_id)) {
+    artifacts = gh_list_artifacts(repo,runid=runid, pat)
+    if (NROW(artifacts)==0) {
+      cat("\nNo artifacts found.")
+      return(NULL)
+    }
+    artifact_id = artifacts$id[[1]]
+  }
+
+
+  endpoint = paste0("repos/",repo,"/actions/artifacts/", artifact_id,"/zip")
+
+  if (FALSE) {
+    # Set up the URL and the destination file
+    url <- paste0('https://api.github.com/', endpoint)
+
+    # Set up the authorization and headers
+    headers <- c(
+      'Accept: application/vnd.github+json',
+      paste0("Authorization: Bearer ", pat),
+      'X-GitHub-Api-Version: 2022-11-28'
+    )
+
+    # Create a new curl handle with the specified headers
+    h <- new_handle()
+    h = handle_setheaders(h, .list = headers)
+    handle_setopt(h, cookiefile = "")
+    handle_setopt(h, verbose = TRUE)
+    # Perform the HTTP GET request and write the output to the destination file
+    destfile = normalizePath(destfile, mustWork=FALSE)
+    curl_download(url, destfile, handle = h)
+  } else if (use_curl) {
+    destfile = normalizePath(destfile, mustWork=FALSE)
+    cmd = paste0('
+curl --output ', destfile,' -L \\
+  -H "Accept: application/vnd.github+json" \\
+  -H "Authorization: Bearer ', pat,'" \\
+  -H "X-GitHub-Api-Version: 2022-11-28" \\
+  https://api.github.com/', endpoint)
+    system(cmd)
+  } else {
+    res = gh_get(endpoint=endpoint,pat = pat, output="httr")
+    if (res$status_code < 300) {
+      writeBin(res$content, con = destfile)
+      return(invisible(res))
+    } else {
+      msg = rawToChar(res$content)
+      cat("\nCould not retrieve artifact.\n",msg)
+      return(res)
+    }
+  }
+
+}
+
+#' List all artifacts of a repo
+
+#' List all artifacts of a repo or single run
+gh_list_artifacts = function(repo,runid=NULL, pat = gh_pat()) {
+  if (is.null(runid)) {
+    endpoint = paste0("repos/", repo,"/actions/artifacts")
+  } else {
+    # https://api.github.com/repos/OWNER/REPO/actions/runs/RUN_ID/artifacts
+    endpoint = paste0("repos/", repo,"/actions/runs/",runid,"/artifacts")
+  }
+  res = gh_get(endpoint, pat)
+  artifacts = res$artifacts
+  artifacts
+}
+
+
+gh_put = function(endpoint, values=NULL, pat = Sys.getenv("GITHUB_PAT")) {
+  restore.point("gh_put")
+  headers = gh_headers(pat, add_content_type = TRUE)
+  json.values = jsonlite::toJSON(values,auto_unbox = TRUE)
+
+  httr::PUT(url = gh_url(endpoint), httr::add_headers(.headers=headers), body = json.values)
+}
+
+gh_post = function(endpoint, values, pat = Sys.getenv("GITHUB_PAT")) {
+  restore.point("gh_post")
+  headers = gh_headers(pat, add_content_type = TRUE)
+  json.values = jsonlite::toJSON(values,auto_unbox = TRUE)
+
+  httr::POST(url = gh_url(endpoint), httr::add_headers(.headers=headers), body = json.values)
+}
+
+
+gh_delete = function(endpoint, pat = Sys.getenv()) {
+  restore.point("gh_delete")
+  httr::DELETE(url = gh_url(endpoint), httr::add_headers(.headers=gh_headers(pat)))
+}
+
+gh_get = function(endpoint, pat=gh_pat(), output = c("json","text","org", "httr")[1]) {
+  restore.point("gh_get")
+
+  headers = gh_headers(pat, add_content_type = TRUE)
+  res = httr::GET(url = gh_url(endpoint), httr::add_headers(.headers=headers))
+  if (output == "httr" | output == "org") {
+    return(res)
+  }
+
+  content = rawToChar(res$content)
+  if (output == "text") return(content)
+  jsonlite::fromJSON(content)
+
+}
+
+
+gh_url = function(endpoint) {
+  paste0("https://api.github.com/", endpoint)
+}
+
+gh_headers = function(pat=Sys.getenv("GITHUB_PAT"), add_content_type=FALSE) {
+  headers = c(
+    `Accept` = 'application/vnd.github+json',
+    `Authorization` = paste0("Bearer ", pat),
+    `X-GitHub-Api-Version` = '2022-11-28'
+  )
+  if (add_content_type) {
+    headers = c(headers,`Content-Type` = 'application/x-www-form-urlencoded')
+  }
+  headers
+}
+```
+# END OF FILE: /home/rstudio/repbox/GithubActions/R/gh_api.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/GithubActions/R/gh_cli.R
+```
+gh_remove_previous_runs = function(repodir, keep_newest=1) {
+  gh_remove_runs(repodir, keep_newest=keep_newest)
+}
+
+gh_remove_runs = function(repodir, keep_newest=0, runids=gh_cli_list_runids(repodir)) {
+  restore.point("gh_remove_runs")
+  if (keep_newest >0) {
+    if (NROW(runids)<=keep_newest) return()
+    runids = runids[-c(1:keep_newest)]
+  }
+  cat("\nRemove ", NROW(runids)," workflow runs from ", repodir,"\n")
+  for (runid in runids) {
+    gh_remove_run(repodir, runid)
+  }
+}
+
+
+
+
+gh_remove_run = function(repodir, runid) {
+  oldwd = getwd(); setwd(repodir)
+  cmd = paste0("gh run delete ", runid)
+  res = system(cmd, intern=TRUE)
+  setwd(oldwd)
+
+}
+
+
+#' Return all workflow runs
+gh_cli_list_runids = function(repodir, pat=gh_pat()) {
+  oldwd = getwd(); setwd(repodir)
+  cmd = paste0("gh run list  --limit 1000")
+  res =  system(cmd, intern=TRUE)
+  tab = read.table(textConnection(res),sep = "\t")
+  runids = tab[,7]
+  setwd(oldwd)
+  return(runids)
+}
+
+#' Login to github with your email and username
+gh_login = function(email, username) {
+  pat = gh_pat()
+  if (is.null(pat)) {
+    cat("\nPlease first set the personal access toke via gh_set_pat.")
+    return()
+  }
+
+  system("gh auth setup-git")
+  system("gh auth login")
+
+  cmd = paste0('git config --global user.email "', email,'"')
+  system(cmd)
+
+  cmd = paste0('git config --global user.name "', username,'"')
+  system(cmd)
+
+}
+
+
+#' Set a repository secret using github client
+#'
+#' @param repodir path to your local repository
+#' @param name name of the secret
+#' @param value of the secret
+gh_set_secret = function(repodir, name, value) {
+  restore.point("gh_set_secret")
+  oldwd = getwd(); setwd(repodir)
+  cmd = paste0("gh secret set ", name ,' --body "', value,'"')
+  res = suppressWarnings(system(cmd, intern=TRUE))
+  res = gsub(value, "***", res, fixed = TRUE)
+  cat("\n",res,"\n")
+  setwd(oldwd)
+  return(attr(res, "status"))
+}
+
+#' Remove a secret from the repository
+#'
+gh_remove_secret = function(repodir, name) {
+  restore.point("gh_remove_secret")
+  oldwd = getwd(); setwd(repodir)
+  cmd = paste0("gh secret deleta ", name)
+  system(cmd)
+  return(res)
+}
+
+#' Get log of a particular workflow run
+gh_run_log = function(repodir, runid) {
+  oldwd = getwd(); setwd(repodir)
+  cmd = paste0("gh run view ", runid," --log")
+  res = system(cmd, intern=TRUE)
+  setwd(oldwd)
+  return(res)
+}
+
+#' Create a new repo on github and locally
+gh_new_repo = function(reponame, parentdir, access=c("public","private")[2], pat=gh_pat()) {
+  restore.point("gh_new_repo")
+  oldwd = getwd(); setwd(parentdir)
+  # gh repo create [<name>] [flags]
+  cmd = paste0("gh repo create ", reponame, " --", access, " --clone")
+  cat("\n",cmd,"\n")
+  system(cmd)
+  cat(paste0("\nLocal repo in ", parentdir,"/", reponame),"\n")
+  setwd(oldwd)
+}
+
+#' Show authentication status
+gh_auth_status = function() {
+  cmd = "gh auth status"
+  system(cmd)
+}
+
+#' Clone a repository on Github to a local directory
+gh_clone = function(repo, repodir) {
+  #gh repo clone <repository> [<directory>] [-- <gitflags>...]
+  if (dir.exists(repodir)) {
+    cat("\nrepodir ", repodir, " already exists.\n")
+    return(invisible())
+  }
+  cmd = paste0("gh repo clone ", repo," ", repodir)
+  system(cmd)
+}
+```
+# END OF FILE: /home/rstudio/repbox/GithubActions/R/gh_cli.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/GithubActions/R/gh_upload_binary.R
+```
+#' Upload a single binary asset (e.g. MP3) as its own GitHub release
+#'
+#' @param repo_dir          Path to the local git repository.
+#' @param tag               Tag that identifies the episode / version.
+#' @param file              Path to the binary file you want to upload.
+#' @param title             Release title (defaults to tag if NULL).
+#' @param notes             Release notes (single string). Use "" for none.
+#' @param target            Commitish or branch to tag. Default "main".
+#' @param prerelease        Logical, mark release as a prerelease.
+#' @param draft             Logical, mark release as a draft.
+#' @param overwrite         Logical, overwrite existing release (gh --clobber).
+#' @param show              Logical, print CLI output.
+#' @return                  Character vector with gh CLI output (invisible).
+#' @examples
+#' gh_upload_binary_file(
+#'   repo_dir = ".",
+#'   tag      = "jep_38_4_2",
+#'   file     = "jep_38_4_2.mp3",
+#'   title    = "The Political Economy of Industrial Policy",
+#'   notes    = "Show notes here ..."
+#' )
+
+gh_upload_binary_file = function(
+  repo_dir, tag, file,
+  title = NULL, notes = "",
+  target = "main", prerelease = FALSE, draft = FALSE,
+  overwrite = FALSE, show = TRUE
+) {
+  # Sanity checks -------------------------------------------------------------
+  if (!file.exists(file)) stop("Asset not found: ", file)
+  if (!nzchar(tag))       stop("Argument 'tag' must be a non-empty string.")
+
+  old_wd = getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(repo_dir)
+
+  # Build argument vector -----------------------------------------------------
+  args = c("release", "create", shQuote(tag), shQuote(file))
+
+  if (!is.null(title))      args = c(args, "--title",       shQuote(title))
+  args = c(args, "--notes", shQuote(notes))
+
+  if (target != "main")     args = c(args, "--target",      shQuote(target))
+  if (prerelease)           args = c(args, "--prerelease")
+  if (draft)                args = c(args, "--draft")
+  if (overwrite)            args = c(args, "--clobber")
+
+  cmd = paste("gh", paste(args, collapse = " "))
+
+  if (show) cat("\nRunning:\n", cmd, "\n")
+  res = system(cmd, intern = TRUE)
+  if (show) cat(res, sep = "\n")
+
+  invisible(res)
+}
+
+#' Remove a release created with `gh_upload_binary_file()` and delete its tag
+#'
+#' @param repo_dir Path to local repository.
+#' @param tag      Tag / release name to delete.
+#' @param yes      Logical, pass --yes to skip confirmation prompts.
+#' @param show     Logical, print CLI output.
+#' @return         Character vector with gh CLI output (invisible).
+#' @examples
+#' gh_remove_binary_file(repo_dir = ".", tag = "jep_38_4_2", yes = TRUE)
+
+gh_remove_binary_file = function(repo_dir, tag, yes = FALSE, show = TRUE) {
+  if (!nzchar(tag)) stop("Argument 'tag' must be a non-empty string.")
+
+  old_wd = getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(repo_dir)
+
+  # First attempt to delete the release --------------------------------------
+  rel_cmd = paste("gh release delete", shQuote(tag), if (yes) "--yes" else "")
+  if (show) cat("\nRunning (release delete):\n", rel_cmd, "\n")
+  rel_res = system(rel_cmd, intern = TRUE, ignore.stderr = TRUE)
+  if (show) cat(rel_res, sep = "\n")
+
+  # GitHub responds with an error message if no release exists.
+  failed = any(grepl("not found", rel_res, ignore.case = TRUE))
+
+  # Always delete the tag afterwards -----------------------------------------
+  tag_cmd = paste("gh tag delete", shQuote(tag), if (yes) "--yes" else "")
+  if (show) cat("\nRunning (tag delete):\n", tag_cmd, "\n")
+  tag_res = system(tag_cmd, intern = TRUE, ignore.stderr = TRUE)
+  if (show) cat(tag_res, sep = "\n")
+
+  invisible(c(rel_res, tag_res))
+}
+
+# -------------------------------------------------------------------
+#' List all releases (tags) of a GitHub repository
+#'
+#' @param repo_dir    Path to local repo (optional if owner_repo given).
+#' @param owner_repo  "owner/repo" string (optional if repo_dir given).
+#' @param limit       Max # of releases to fetch (GitHub max 100).
+#' @param show        Logical, echo the gh CLI call.
+#'
+#' @return Character vector of tag names (0-length if none).
+#' @examples
+#' gh_list_releases(owner_repo = "skranz/jep_podcast")
+# -------------------------------------------------------------------
+gh_list_releases = function(repo_dir = NULL,
+                            owner_repo = NULL,
+                            limit      = 100,
+                            show       = FALSE) {
+
+  args = c("release", "list",
+           "--limit", limit,
+           "--json", "tagName",
+           "--jq", ".[].tagName")
+
+  if (!is.null(owner_repo)) {
+    args = c(args, "-R", owner_repo)
+  } else if (!is.null(repo_dir)) {
+    if (!file.exists(file.path(repo_dir, ".git")))
+        stop("repo_dir does not point to a git repository: ", repo_dir)
+  } else {
+    repo_dir = getwd()
+  }
+
+  old_wd = getwd()
+  if (is.null(owner_repo) && !is.null(repo_dir)) {
+    on.exit(setwd(old_wd), add = TRUE)
+    setwd(repo_dir)
+  }
+
+  if (show) cat("\nRunning:\n", "gh", paste(args, collapse = " "), "\n")
+  tags = suppressWarnings(system2("gh", args, stdout = TRUE, stderr = TRUE))
+  tags = tags[nzchar(tags)]     # drop empty lines
+
+  return(tags)
+}
+
+# -------------------------------------------------------------------
+#' TRUE/FALSE: does a release with this tag exist?
+#'
+#' Just a wrapper around gh_list_releases().
+# -------------------------------------------------------------------
+gh_has_release = function(tag,
+                          repo_dir   = NULL,
+                          owner_repo = NULL,
+                          limit      = 100,
+                          show       = FALSE) {
+
+  if (!nzchar(tag)) stop("Argument 'tag' must be a non-empty string.")
+  tags = gh_list_releases(repo_dir   = repo_dir,
+                          owner_repo = owner_repo,
+                          limit      = limit,
+                          show       = show)
+  tag %in% tags
+}
+
+# ------------------------------------------------------------------
+# Filename normalizer ----------------------------------------------
+# ------------------------------------------------------------------
+
+#' Normalize file names of binary file so that GitHub keeps
+#' them unchanged when uploaded as a release.
+#' By default every run of non-alphanumeric characters (including spaces)
+#' is collapsed into a single underscore. Accents are transliterated to
+#' plain ASCII. Leading/trailing separators are trimmed. Multiple
+#' separators are collapsed.
+#'
+#' @param files    Character vector of *existing* file paths.
+#' @param dry_run  Logical. If TRUE, do not rename, only print what would happen.
+#' @param to_lower Logical. If TRUE, convert the stem (not the extension) to lower case.
+#' @param sep      Replacement separator (default "_"). Use "-" or "." if you prefer.
+#' @param verbose  Logical. Print each operation.
+#' @return         Invisibly returns the vector of new file paths.
+#' @examples
+#' gh_normalize_files("Episode 1 - Intro.mp3")
+
+gh_normalize_file_names = function(
+  files,
+  dry_run = FALSE,
+  to_lower = FALSE,
+  sep = "_",
+  verbose = TRUE
+) {
+  if (length(files)==0) return(files)
+
+  files = normalizePath(files, mustWork = FALSE)
+  new_paths = character(length(files))
+
+  for (i in seq_along(files)) {
+    f = files[i]
+    if (!file.exists(f)) stop("File not found: ", f)
+
+    dir  = dirname(f)
+    base = basename(f)
+    ext  = tools::file_ext(base)
+
+    stem = sub(paste0("\\.", ext, "$"), "", base)
+    if (to_lower) stem = tolower(stem)
+
+    # ASCII transliteration and replacement
+    stem = stringi::stri_trans_general(stem, "Latin-ASCII")
+    stem = gsub("[^A-Za-z0-9]+", sep, stem)
+
+    # collapse multiple separators and trim edges
+    pat  = paste0(sep, "+")
+    stem = gsub(pat, sep, stem)
+    stem = gsub(paste0("^", sep, "|", sep, "$"), "", stem)
+
+    new_base = paste0(stem, if (nzchar(ext)) paste0(".", ext) else "")
+    new_path = file.path(dir, new_base)
+    new_paths[i] = new_path
+
+    if (identical(f, new_path)) {
+      if (verbose) cat("Already normalized:", new_base, "\n")
+      next
+    }
+
+    if (!dry_run) {
+      ok = file.rename(f, new_path)
+      if (!ok) stop("Could not rename ", f, " to ", new_path)
+    }
+    if (verbose) cat(if (dry_run) "Would rename" else "Renamed", base, "->", new_base, "\n")
+  }
+  new_paths
+}
+
+```
+# END OF FILE: /home/rstudio/repbox/GithubActions/R/gh_upload_binary.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/GithubActions/R/git.R
+```
+#' Updates the Github repository to the new content of the local repo directory
+#'
+gh_update = function(repodir, msg="update", remote="origin",branch="main", force_with_lease=FALSE, allow_empty = FALSE) {
+  git_commit_all(repodir, msg, allow_empty = allow_empty)
+  git_push(repodir, remote, branch, force_with_lease=force_with_lease)
+}
+
+#' Removes all old commits of a branch and only keeps current local files
+#'
+#' Based on https://superuser.com/questions/926915/how-can-i-delete-old-commits-in-github-via-terminal
+#' WARNING: Don't use for real code repos, in particular not for repos multiple users work with.
+gh_remove_history = function(repodir, branch = "main") {
+  oldwd = getwd(); setwd(repodir)
+  # Make new branch
+  system("git checkout --orphan temp_latest_branch")
+
+  # Add all current local files to latest_branch and commit
+  system("git add -A")
+  system("git commit -m restart")
+
+  # Remove the specified branch
+  system(paste0("git branch -D ", branch))
+
+  # Rename temp_latest_branch to specified branch
+  system(paste0("git branch -m ", branch))
+
+  # Push changes
+  system(paste0("git push -f origin ", branch))
+
+  setwd(oldwd)
+}
+
+gh_pull = function(repodir, branch = "main") {
+  oldwd = getwd(); setwd(repodir)
+  system(paste0("git pull origin ", branch))
+  setwd(oldwd)
+}
+
+#' Remove a branch from local and github repository
+gh_remove_branch = function(repodir, branch) {
+  oldwd = getwd(); setwd(repodir)
+  system(paste0("git branch -d ", branch))
+  system(paste0("git push -d origin ", branch))
+  setwd(oldwd)
+}
+
+git_commit_all = function(repodir, msg="update", allow_empty=FALSE) {
+  oldwd = getwd(); setwd(repodir)
+  cmd = "git add -A"
+  system(cmd)
+
+  args = ""
+  if (allow_empty) {
+    args = " --allow-empty"
+  }
+
+  cmd = paste0('git commit ', args,' -m "', msg,'"')
+  system(cmd)
+  setwd(oldwd)
+}
+
+#' Push local changes to a remote Git branch
+#'
+#' Runs a `git push` (optionally with `--force-with-lease`) from a given
+#' repository directory, then restores the original working directory.
+#'
+#' @param repodir Character string. Path to the local Git repository.
+#' @param remote  Character string. Name of the remote to push to.
+#'                Default is `"origin"`.
+#'                **Note:** the current implementation always pushes to
+#'                `"origin"` internally; change `cmd` if you need another remote.
+#' @param branch  Character string. Name of the branch to push.
+#'                Default is `"main"`.
+#' @param force_with_lease Logical. Set TRUE if your local branch was reverted to an old commit, but you still want to force changes to the main branch. If `TRUE`, uses
+#'                `git push --force-with-lease`; otherwise a normal
+#'                `git push`. Default is `FALSE`.
+#'
+#' @details
+#' The function temporarily switches the working directory to `repodir`,
+#' assembles the appropriate `git push` command, executes it via
+#' `system()`, and then switches back to the original directory stored in
+#' `oldwd`.
+#' @export
+git_push = function(repodir, remote="origin", branch="main", force_with_lease=FALSE) {
+  oldwd = getwd(); setwd(repodir)
+  if (force_with_lease) {
+    cmd = paste0('git push --force-with-lease origin ', branch)
+  } else {
+    cmd = paste0('git push origin ', branch)
+
+  }
+  system(cmd)
+  setwd(oldwd)
+}
+
+
+#' Revert the working tree (and HEAD) to an earlier commit
+#'
+#' @param repodir Path to the local Git repository.
+#' @param commit  Commit hash, tag or any revision that Git accepts.
+#' @param keep_local_files Character vector of file paths that should retain
+#'        their current contents after the revert (copied out and restored).
+#' @param just_files Character vector of file paths that should be taken from
+#'        the old commit while everything else stays unchanged.  In this mode
+#'        the repository itself is NOT reset.
+#' @param commit_msg Commit message used when the function creates a commit.
+#'
+#' @details
+#' * If *just_files* is supplied the function runs
+#'   `git checkout <commit> -- <files>`
+#'   and then commits the result.
+#' * Otherwise it performs `git reset --hard <commit>`.
+#'   When *keep_local_files* is given, those files are copied to a temporary
+#'   folder beforehand and restored afterwards, followed by a new commit.
+#'
+#' The function only changes the local repository; push if you need the change
+#' on GitHub.
+#'
+gh_revert_to_commit = function(
+  repodir,
+  commit,
+  keep_local_files = NULL,
+  just_files = NULL,
+  commit_msg = "revert"
+) {
+  if (!dir.exists(file.path(repodir, ".git")))
+    stop("repodir does not point to a Git repository: ", repodir)
+
+  if (!is.null(keep_local_files) && !is.null(just_files))
+    stop("Specify either keep_local_files or just_files, not both.")
+
+  oldwd = getwd()
+  on.exit(setwd(oldwd), add = TRUE)
+  setwd(repodir)
+
+  # --------------------------------------------------------------------------
+  # 1) Only selected files from the old commit
+  # --------------------------------------------------------------------------
+  if (!is.null(just_files)) {
+    files = paste(shQuote(just_files), collapse = " ")
+    cmd = paste("git checkout", commit, "--", files)
+    system(cmd)
+
+    # commit the result so Git history is linear
+    git_commit_all(repodir, msg = paste0("Revert selected files to ", commit))
+    return(invisible())
+  }
+
+  # --------------------------------------------------------------------------
+  # 2) Full reset (optionally keep some local files)
+  # --------------------------------------------------------------------------
+  tmpdir = NULL
+  if (!is.null(keep_local_files)) {
+    tmpdir = tempfile("keep_")
+    for (f in keep_local_files) {
+      src = file.path(repodir, f)
+      if (!file.exists(src))
+        stop("File listed in keep_local_files not found: ", f)
+      dest = file.path(tmpdir, f)
+      dir.create(dirname(dest), recursive = TRUE, showWarnings = FALSE)
+      file.copy(src, dest, overwrite = TRUE)
+    }
+  }
+
+  # hard reset
+  system(paste("git reset --hard", commit))
+
+  # restore kept files
+  if (!is.null(tmpdir)) {
+    keep_files = list.files(tmpdir, recursive = TRUE, full.names = TRUE)
+    rel_paths = substring(keep_files, nchar(tmpdir) + 2)
+    file.copy(keep_files, file.path(repodir, rel_paths), overwrite = TRUE)
+  }
+
+  git_commit_all(repodir, msg = paste0(commit_msg, " to ", commit))
+  invisible()
+}
+
+```
+# END OF FILE: /home/rstudio/repbox/GithubActions/R/git.R
+
+-----------------------------------------------------------
+
+
+# FILE: /home/rstudio/repbox/GithubActions/R/util.R
+```
+seconds_passed = function(start.time) {
+  as.numeric(Sys.time())-as.numeric(start.time)
+}
+```
+# END OF FILE: /home/rstudio/repbox/GithubActions/R/util.R
+
+-----------------------------------------------------------
+
+
+
+# Test project (run file that shall trigger github actions)
+
+
+# FILE: /home/rstudio/repbox/projects/gha_test/run/gha_pipeline.R
+```
+# Example end-to-end test script for the minimal Github Actions
+# Stata reproduction in /home/rstudio/repbox/gha/gha_rp.
 #
-# See the corresponding documentations of
+# Adapt all paths and repo names to your setup.
 #
-# repbox_art_opts, repbox_stata_opts, etc
+# This script also works if the project has no original supplement ZIP
+# anymore, but still has a complete /org folder. In that case
+# gha_rp_stage_sup_zip() creates a ZIP from /org automatically.
 
-art_opts:
+library(repboxGithub)
+library(repboxRun)
 
-stata_opts:
+run_cmd = function(cmd, args, wd = NULL) {
+  cat("\n> ", paste(c(cmd, args), collapse = " "), "\n", sep = "")
+  status = system2(command = cmd, args = args, stdout = "", stderr = "")
+  if (!identical(status, 0L)) {
+    stop(paste0("Command failed: ", paste(c(cmd, args), collapse = " ")))
+  }
+  invisible(TRUE)
+}
 
-r_opts:
+run_cmd = function(cmd, args, wd = NULL) {
+  cat("\n> ", paste(c(cmd, args), collapse = " "), "\n", sep = "")
+  flush.console()
 
-map_opts:
+  old_wd = getwd()
+  if (!is.null(wd)) {
+    on.exit(setwd(old_wd), add = TRUE)
+    setwd(wd)
+  }
 
-html_opts:
+  status = system2(cmd, args = args, stdout = "", stderr = "")
+  if (!identical(status, 0L)) {
+    stop(paste0("Command failed: ", paste(c(cmd, args), collapse = " ")))
+  }
 
-run_opts:
-  
+  invisible(TRUE)
+}
+# ------------------------------------------------------------
+# 1. Example paths and repo names
+# ------------------------------------------------------------
+
+# Local repbox project.
+# Example 1: project has an original supplement ZIP somewhere that
+# rb_get_sup_zip(project_dir) can find.
+#
+# Example 2: project only has /org and no ZIP. Then the helper
+# automatically creates meta/<artid>_org.zip from /org.
+project_dir = "/home/rstudio/repbox/projects/gha_test"
+artid = basename(project_dir)
+
+# Local checkout of the Github Actions repo.
+gha_repo_dir = "/home/rstudio/repbox/gha/gha_rp"
+
+if (FALSE)
+  rstudioapi::filesPaneNavigate(gha_repo_dir)
+
+# Github repo slug used by git and gh.
+github_repo = "skranz/gha_rp"
+
+# Workflow file in the gha_rp repo.
+workflow_file = "run_remote_stata.yml"
+
+# Directory on your server where the supplement ZIP should be copied.
+server_dir = "/home/rstudio/web/repbox_temp"
+
+# Public base URL that maps to server_dir.
+url_base = "http://klein.mathematik.uni-ulm.de/repbox_temp"
+
+# ------------------------------------------------------------
+# 2. Stage the supplement ZIP and refresh gha_rp/run_config.R
+# ------------------------------------------------------------
+
+# If you want to force using a specific ZIP file, set sup_zip explicitly.
+# Otherwise keep sup_zip = NULL.
+sup_zip = NULL
+
+prep = gha_rp_prepare_repo(
+  project_dir = project_dir,
+  server_dir = server_dir,
+  url_base = url_base,
+  repo_dir = gha_repo_dir,
+  sup_zip = sup_zip,
+  overwrite = TRUE,
+  timeout = 10 * 60,
+  create_mod_dir = TRUE,
+  capture_reg_info = TRUE,
+  capture_scalar_info = TRUE,
+  stop.on.error = TRUE,
+  work_dir = "gha_work",
+  output_dir = "gha_output/bundle",
+  artifact_name = "gha-rp-results"
+)
+
+cat("\nPrepared Github Actions input.\n")
+print(prep$staged_sup)
+print(prep$run_config)
+
+# ------------------------------------------------------------
+# 3. Commit and push the updated gha_rp/run_config.R
+# ------------------------------------------------------------
+
+library(GithubActions)
+
+GithubActions::gh_set_pat(readLines("/home/rstudio/repbox/pat.txt"))
+GithubActions::gh_auth_status()
+
+# The workflow reads run_config.R from the Github repo, so the changed
+# config must be committed and pushed before triggering the run.
+
+
+GithubActions::gh_update(gha_repo_dir,msg = paste0("Update to ", artid))
+
+# ------------------------------------------------------------
+# 4. Trigger the Github Actions workflow
+# ------------------------------------------------------------
+
+res = GithubActions::gh_run_workflow(github_repo)
+
+# This uses the gh CLI. You need to be logged in already.
+run_cmd("gh", c("workflow", "run", workflow_file, "--repo", github_repo))
+
+# Show recent runs for this workflow.
+run_cmd("gh", c(
+  "run", "list",
+  "--repo", github_repo,
+  "--workflow", workflow_file,
+  "--limit", "5"
+))
+
+# Optional:
+# You can watch the run interactively in a terminal with:
+#
+# system2("gh", c("run", "watch", "--repo", github_repo))
+#
+# Or inspect it in the Github web UI.
+
+# ------------------------------------------------------------
+# 5. After the workflow finished: download the raw Stata bundle
+# ------------------------------------------------------------
+
+# Run the next block only after the Github Actions job finished
+# successfully.
+
+gha_rp_download_stata_raw_results(
+  repo = github_repo,
+  project_dir = project_dir,
+  overwrite = TRUE,
+  verify = TRUE,
+  local_input_zip = NULL
+)
+
+cat("\nRaw Github Actions bundle imported into the local project.\n")
+
+# ------------------------------------------------------------
+# 6. Local postprocess after the remote raw run
+# ------------------------------------------------------------
+
+# Now do the easy-to-debug local steps.
+
+rb = repboxRun:::rb_new(
+  project_dir = project_dir,
+  copy_existing = FALSE,
+  fail_action = "error"
+)
+
+# Make sure the file and script parcels exist locally.
+rb = repboxRun:::rb_update_file_info_parcel(
+  rb = rb,
+  overwrite = FALSE,
+  assume_org_complete = TRUE
+)
+
+rb = repboxRun:::rb_update_script_parcels(
+  rb = rb,
+  overwrite = FALSE
+)
+
+# Turn the raw Stata outputs into local derivatives.
+rb = repboxRun:::rb_postprocess_stata_reproduction(
+  rb = rb,
+  overwrite = TRUE,
+  build_run_info = TRUE,
+  build_do_run_info = TRUE,
+  build_reg_info = TRUE,
+  build_drf = TRUE
+)
+
+# Optional local follow-up steps:
+#
+# rb = repboxRun:::rb_update_docs(
+#   rb = rb,
+#   overwrite = FALSE,
+#   init_docs = TRUE,
+#   process_docs = TRUE
+# )
+#
+# rb = repboxRun:::rb_update_static_code_analysis(
+#   rb = rb,
+#   overwrite = FALSE,
+#   lang = c("stata", "r")
+# )
+
+cat("\nLocal postprocess finished.\n")
+
+# ------------------------------------------------------------
+# 7. Notes for the no-ZIP case
+# ------------------------------------------------------------
+
+# If your project only had /org and no original ZIP:
+#
+# - gha_rp_prepare_repo() will create
+#   /meta/<artid>_org.zip locally.
+# - That ZIP is then copied to server_dir and used by Github Actions.
+# - The raw run manifest stores the md5 of the ZIP used remotely.
+#
+# If you want to explicitly create the ZIP yourself first, you can do:
+#
+# local_zip = repboxRun::rb_make_org_zip(
+#   project_dir = project_dir,
+#   overwrite = TRUE
+# )
+# print(local_zip)
 ```
-# END OF FILE: /home/rstudio/repbox/gha/gha_repbox_ex4/run_config.yml
+# END OF FILE: /home/rstudio/repbox/projects/gha_test/run/gha_pipeline.R
 
 -----------------------------------------------------------
+
 
 
 ##################################
 # Your Task
 ##################################
 
-I am currently revising the repbox pipeline.
+The files above are about my repbox Github Actions pipeline that shall
+run the original Stata reproduction on Github.
 
-The rb* functions and files in repboxRun are the new pipeline.
+Currently I have the problem that r-universe has not yet updated all
+packages and thus the Docker container is outdated.
 
-In the new pipeline I want to run the original Stata code with
-the injections that store the data in intermediate files in
-the /repbox/stata folder on GithubActions.
-
-Yet, all other steps (docs, creating drf folder, repdb packages etc),
-shall be done later locally. There debugging is easier.
-
-The main reproduction run shall still be on GithubActions as it is nicely
-containered and I thus reduce the risk for my own computer.
-
-The github repo shown above still uses the old pipeline, it
-did run much more steps on Github Actions.
-
-Please look at the code and propose how to best implement
-my minimal Github action run with the new pipeline.
-
-I also need local copy functions that put stuff for Github actions to load
-on my server (e.g. only the original supplement ZIP).
-
-Make first a proposal, explain the steps, the needed concrete implementations.
-Don't code anything yet.
-
-
-
-
-
+Can you add to the github repro `gha_rp` a file `install_from_gh.R` that
+installs all needed repbox packages, i.e. repboxRun including all dependecies
+via remotes from Github. You need to check the correct install sequence,
+as no remote fields are declared. 

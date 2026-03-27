@@ -19,9 +19,21 @@ Below are relevant files from R projects / directory related to repboxbox
 
 {{repboxGithub}}
 
-# Old Github repo where I ran Github Actions
 
-{{gha_repo_old}}
+# Github repo where Github Actions are run
+
+{{gha_repo}}
+
+
+# Package GithubActions
+
+{{GithubActions}}
+
+
+# Test project (run file that shall trigger github actions)
+
+{{gha_test_project}}
+
 
 ##################################
 # Your Task
@@ -86,6 +98,32 @@ include_files = '''
 /home/rstudio/repbox/repboxRun/DESCRIPTION
 /home/rstudio/repbox/repboxRun/R/*.R
 '''
+
+
+[[GithubActions]]
+
+include_files = '''
+/home/rstudio/repbox/GithubActions/DESCRIPTION
+/home/rstudio/repbox/GithubActions/R/*.R
+'''
+
+
+
+[[gha_repo]]
+
+include_files = '''
+/home/rstudio/repbox/gha/gha_rp/*.R
+/home/rstudio/repbox/gha/gha_repbox_ex4/.github/workflow/*.yml
+'''
+
+
+[[gha_test_project]]
+
+include_files = '''
+/home/rstudio/repbox/projects/gha_test/run/*.R
+'''
+
+
 
 [[gha_repo_old]]
 
