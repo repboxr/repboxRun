@@ -1,5 +1,8 @@
 rb_update_meta = function(rb, overwrite=FALSE, opts=rb_options()) {
   restore.point("rb_update_meta")
+  if (!require(repboxEJD)) {
+    cat("\nNo repboxEJD package, don't update meta information.")
+  }
   library(repboxEJD)
   if (!rb_shall_perform_step(rb,"meta")) return(rb)
 

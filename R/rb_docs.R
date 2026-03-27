@@ -11,7 +11,7 @@ rb_update_docs = function(rb, overwrite=FALSE,init_docs=TRUE, process_docs=TRUE)
     }
   }
 
-  if (init_docs) {
+  if (init_docs & require(repboxEJD)) {
     #library(repboxEJD)
     repboxEJD::repbox_ejd_init_doc(project_dir = project_dir, overwrite=overwrite)
   }
