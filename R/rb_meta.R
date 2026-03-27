@@ -1,5 +1,6 @@
 rb_update_meta = function(rb, overwrite=FALSE, opts=rb_options()) {
   restore.point("rb_update_meta")
+  library(repboxEJD)
   if (!rb_shall_perform_step(rb,"meta")) return(rb)
 
   rb$has_meta = rb_has_meta(rb$project_dir)

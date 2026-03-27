@@ -89,6 +89,7 @@ rb_run_stata_reproduction_raw = function(
   manifest_extra = list()
 ) {
   restore.point("rb_run_stata_reproduction_raw")
+  library(repboxStata)
 
   rb = rb_update_file_info_parcel(
     rb = rb,
@@ -158,6 +159,8 @@ rb_postprocess_stata_reproduction = function(
   build_drf = TRUE
 ) {
   restore.point("rb_postprocess_stata_reproduction")
+  library(repboxStata)
+  library(repboxStataReg)
 
   project_dir = rb$project_dir
   if (is.null(project_dir)) stop("No project_dir")
@@ -229,6 +232,8 @@ rb_run_stata_reproduction = function(
   manifest_extra = list()
 ) {
   restore.point("rb_run_stata_reproduction")
+  library(repboxStata)
+
 
   if (!rb_has_lang(rb, "stata")) {
     cat("The reproduction package has no Stata scripts.")

@@ -1,5 +1,6 @@
 rb_update_docs = function(rb, overwrite=FALSE,init_docs=TRUE, process_docs=TRUE) {
   restore.point("rb_update_docs")
+  library(repboxDoc)
   project_dir = rb$project_dir
 
   rb$has_docs = rb_has_docs(project_dir)

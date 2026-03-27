@@ -13,6 +13,7 @@ rb_has_mr_base = function(rb, project_dir = rb$project_dir) {
 
 rb_run_mr_base = function(rb, overwrite = FALSE) {
   restore.point("rb_run_stata_reg_repro")
+  library(metaregBase)
   rb_log_step_start(rb, "stata_reg_repro")
   project_dir = rb$project_dir
 
