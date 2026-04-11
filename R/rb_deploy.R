@@ -6,6 +6,10 @@ example = function() {
   rb_run_scripts_job(project_dir, c("post_gha"))
   rb_run_scripts(project_dir, "pre_gha")
   rstudioapi::filesPaneNavigate(project_dir)
+
+
+
+
 }
 
 rb_run_scripts_job = function(project_dirs, tpl_names = NULL, job_file="~/repbox/jobs/rb_script_job.R") {
