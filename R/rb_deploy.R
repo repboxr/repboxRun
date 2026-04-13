@@ -1,7 +1,8 @@
 example = function() {
   library(repboxRun)
   project_dir = "~/repbox/projects/aejapp_11_2_10"
-  rb_deploy_run_tpl(project_dir, overwrite=FALSE)
+  project_dir = "~/repbox/projects/aejapp_1_3_4"
+  rb_deploy_run_tpl(project_dir, overwrite=TRUE)
   rb_run_scripts_job(project_dir, c("pre_gha","gha","post_gha"))
   rb_run_scripts_job(project_dir, c("post_gha"))
   rb_run_scripts(project_dir, "pre_gha")
