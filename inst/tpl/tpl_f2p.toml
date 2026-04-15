@@ -9,12 +9,11 @@ exclude_files = '''
 
 template = '''
 
-The Stata do files provide examples for my repbox pipeline. Goal is that
-all data preparation commands & the regression commands can be translated
-to R using the framework in the stata2R, repboxDRF and metaregBase packages.
+Below are file from a project of my repbox pipeline where not everything works as planned.
+Goal is that all data preparation commands & the regression commands can be translated
+to R using the framework layed out in the stata2R, repboxDRF and metaregBase packages.
 
-{{do_files}}
-
+# Selected R packages of the repbox project
 
 # package stata2R
 
@@ -33,12 +32,39 @@ to R using the framework in the stata2R, repboxDRF and metaregBase packages.
 
 {{repboxDRF}}
 
+# Selected files, test scripts and outputs of my example project
 
-## Format of proposed changes to code  files
+Note that we may omit some files to reduce context size.
+
+## Original do files (possibly a selection)
+
+{{do_files}}
+
+## Script that runs tests
+
+{{test_script}}
+
+# Test report from running the test script
+
+{{test_report}}
+
+# Some generated parcels in the test run
+
+{{parcels}}
+
+# Some translations of repboxDRF for specific runid where problems occur
+
+{{special_runid}}
+
+# Files in the project's drf directory
+
+{{drf_dir}}
+
+# Format of proposed changes to code  files
 
 When you suggest changes to code or text files or completely new files, you MUST use the following format for each modification. Each change must be enclosed in a `!MODIFICATION` block.
 
-### Overall Structure
+## Overall Structure
 
 Each modification block has three parts:
 1.  Start and end markers: `!MODIFICATION {{what}}` and `!END_MODIFICATION {{what}}`, where {{what}} is just a short reference to what is modified, file name or function name with with file. It will not be parsed but makes it easier for a human to understand blocks.
@@ -69,7 +95,7 @@ Use this format to create a new file or to completely rewrite an existing one.
 *   `file` (string): The path to the file. Very important: state the path of the file as shown in the files header above. If there is a complete absolute path, also show the complete absolute path here.
 *   `description` (string): A brief explanation of the change in quotes ""
 
-#### **Example 1.1: Creating or modifying a file**
+### **Example 1.1: Creating or modifying a file**
 !MODIFICATION new_helpers.R
 scope = "file"
 file = "/home/rstudio/myproject/R/new_helpers.R"
@@ -84,17 +110,17 @@ say_hello = function(name) {
 !END_MODIFICATION new_helpers.R
 
 
-### **Scope 2: `function`**
+## **Scope 2: `function`**
 
 Use this fomrat to replace an existing function or to insert a new function. The new code payload should contain the complete function, including any preceding comments.
 
-#### **Fields for replacing an existing function:**
+### **Fields for replacing an existing function:**
 *   `scope = "function"`
 *   `file` (string): The path to the file. Very important: state the path of the file as shown in the files header above. If there is a complete absolute path, also show the complete absolute path here.
 *   `function_name` (string): The name of the function to be replaced.
 *   `description` (string): A brief explanation of the change in quotes.
 
-#### **Fields for inserting a new function:**
+### **Fields for inserting a new function:**
 *   `scope = "function"`
 *   `file` (string): The path to the file. Very important: state the path of the file as shown in the files header above. If there is a complete absolute path, also show the complete absolute path here.
 *   `description` (string): A brief explanation of the change, enclose in quotes.
@@ -105,7 +131,7 @@ Use this fomrat to replace an existing function or to insert a new function. The
     *   `insert_after_fun = "function_name"`: Insert after the specified function.
 
 
-#### **Example 2.1: Replacing an existing function**
+### **Example 2.1: Replacing an existing function**
 !MODIFICATION calculate_sum utils.R
 scope = "function"
 file = "R/utils.R"
@@ -120,7 +146,7 @@ calculate_sum = function(vec) {
 ```
 !END_MODIFICATION calculate_sum utils.R
 
-#### **Example 2.2: Inserting a new function at the bottom of a file (here was an absolute file path given)**
+### **Example 2.2: Inserting a new function at the bottom of a file (here was an absolute file path given)**
 !MODIFICATION is_positive in R/utils.R
 scope = "function"
 file = "/home/myuser/mypkg/R/utils.R"
@@ -136,7 +162,7 @@ is_positive = function(n) {
 ```
 !END_MODIFICATION is_positive in R/utils.R
 
-#### **Example 2.3: Inserting a new function after a specific function**
+### **Example 2.3: Inserting a new function after a specific function**
 !MODIFICATION is_negative in R/utils.R
 scope = "function"
 file = "R/utils.R"
@@ -150,36 +176,12 @@ is_negative = function(n) {
   n < 0
 }
 ```
-# Test script
-
-{{test_script}}
-
-I manually call the part
-
-```r
-  options(warn=2)
-  opts=mrb_test_opts(data_head_rows = 30, show_org_data=FALSE, show_pre_reg_data = FALSE, data_width=100, max_cases = 1, data_add_org_row=TRUE)
-  metaregBase::mrb_run_as_test(project_dir = "~/repbox/projects_test/test","~/repbox/projects_test/test/run/run_test.R", opts=opts)
-```
-which runs the whole script using `mrb_run_as_test`
-
-# Test report from running the test script
-
-{{test_report}}
-
-# Some generated parcels in the test run
-
-{{parcels}}
-
-I cannot yet completely rule out that our test script keeps infos from
-old runs, but it should ideally overwrite infos from old runs. Also time stamps from the parcels correspond to last run.
 
 ##################################
 # Your Task
 ##################################
 
-The test report shows an error. Can you analyse the problem, explain and suggest an update
-to the code that solves it?
+
 
 '''
 
@@ -196,6 +198,14 @@ file_template = '''
 -----------------------------------------------------------
 '''
 
+[[drf_dir]]
+
+tree_view = true
+include_files = '''
+{{{project_dir}}}/drf/**/*
+'''
+
+
 [[parcels]]
 
 include_files = '''
@@ -206,21 +216,26 @@ repdb/regcoef.Rds
 [[test_script]]
 
 include_files = '''
-run_test/run_test.R
+{{{tpl_project_dir}}}/run_test/run_test.R
 '''
 
 
 [[test_report]]
 
 include_files = '''
-test_report/test_report.Rmd
+{{{project_dir}}}/test_report/test_report.Rmd
 '''
 
+[[special_runid]]
+
+include_files = '''
+{{{project_dir}}}/run/runid_*/*.R
+'''
 
 [[do_files]]
 
 include_files = '''
-org/code/*.do
+{{{project_dir}}}/org/code/*.do
 '''
 
 
