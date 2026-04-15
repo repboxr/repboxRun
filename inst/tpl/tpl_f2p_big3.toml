@@ -36,9 +36,6 @@ to R using the framework in the stata2R, repboxDRF and metaregBase packages.
 
 ## Format of proposed changes to code  files
 
-
-## Format of proposed changes to code  files
-
 When you suggest changes to code or text files or completely new files, you MUST use the following format for each modification. Each change must be enclosed in a `!MODIFICATION` block.
 
 ### Overall Structure
