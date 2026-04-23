@@ -6,7 +6,7 @@ remove.dir = function(dir.to.be.removed, recursive=TRUE, must.contain = "/projec
   unlink(dir.to.be.removed,recursive = recursive)
 }
 
-rb_remove_project_dirs = function(project_dir, clear_drf=FALSE, clear_mrb=FALSE, clear_repbox=FALSE, clear_repdb=FALSE, must.contain="/projects") {
+rb_remove_project_dirs = function(project_dir, clear_drf=clear_all, clear_mrb=clear_all, clear_repbox=clear_all, clear_repdb=clear_all, clear_problems=clear_all, clear_all=FALSE, must.contain="/projects") {
   if (clear_drf) {
     remove.dir(file.path(project_dir,"drf"), must.contain = must.contain)
   }
@@ -18,6 +18,9 @@ rb_remove_project_dirs = function(project_dir, clear_drf=FALSE, clear_mrb=FALSE,
   }
   if (clear_repdb) {
     remove.dir(file.path(project_dir,"repdb"), must.contain = must.contain)
+  }
+  if (clear_problems) {
+    remove.dir(file.path(project_dir,"problems"), must.contain = must.contain)
   }
 }
 
