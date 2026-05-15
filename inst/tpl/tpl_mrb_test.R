@@ -37,6 +37,7 @@ if (!FALSE) {
   options(warn=2)
   mrb = mrb_full_stata_script(mrb)
   mrb = mrb_run_stata_script(mrb)
+  mrb$drf = repboxDRF:::drf_apply_caches(mrb$drf)
   mrb = mrb_agg_stata(mrb)
 
 }
